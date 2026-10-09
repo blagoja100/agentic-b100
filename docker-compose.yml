@@ -1,0 +1,30 @@
+services:
+  tubeagent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tubeagent
+    restart: unless-stopped
+    ports:
+      - "8000:8000"   # TubeAgent Web Dashboard & API
+      - "8088:8088"   # YouTube OAuth browser authorization redirect
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - PYTHONUNBUFFERED=1
+      - WEB_HOST=0.0.0.0
+      - WEB_PORT=8000
+      - WATCH_FOLDER=/app/watch_folder
+      - PROCESSED_FOLDER=/app/processed_folder
+      - DATA_DIR=/app/data
+      - OAUTH_BIND_ADDR=0.0.0.0
+      - OAUTH_HOST=localhost
+    volumes:
+      # Mount your laptop's local folders into the container:
+      # Change LOCAL_WATCH_FOLDER in .env or set below to any local path on your laptop!
+      - "${LOCAL_WATCH_FOLDER:-./watch_folder}:/app/watch_folder"
+      - "${LOCAL_PROCESSED_FOLDER:-./processed_folder}:/app/processed_folder"
+      
+      # Persistent storage for SQLite database, upload history, and OAuth tokens
+      - "${LOCAL_DATA_FOLDER:-./data}:/app/data"

@@ -1,0 +1,48 @@
+# Environment & Secrets (NEVER commit secrets to public GitHub)
+.env
+.env.*
+!.env.example
+client_secrets*.json
+token*.json
+client.json
+*.pem
+*.key
+
+# Persistent Data & Databases
+data/
+*.db
+*.sqlite
+*.sqlite3
+tube_agent.db
+
+# Python bytecode & virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+dist/
+build/
+*.egg-info/
+
+# Video media folders (Avoid storing heavy video binaries in Git)
+watch_folder/*
+!watch_folder/.gitkeep
+processed_folder/*
+!processed_folder/.gitkeep
+failed_folder/*
+!failed_folder/.gitkeep
+*.mp4
+*.mov
+*.mkv
+*.avi
+*.webm
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.log

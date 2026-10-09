@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TubeAgent - Autonomous YouTube Ingestion & AI Agent</title>
+    <meta name="description" content="Autonomous AI Agent that monitors video folders, generates SEO titles and descriptions via Gemini, and uploads to YouTube.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <!-- Top Navigation Header -->
+    <header class="app-header" id="mainHeader">
+        <div class="header-brand">
+            <div class="brand-logo">
+                <svg viewBox="0 0 24 24" class="logo-icon" fill="currentColor">
+                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                </svg>
+                <div class="logo-sparkle">✦</div>
+            </div>
+            <div>
+                <h1 class="brand-title">Tube<span class="gradient-text">Agent</span></h1>
+                <p class="brand-subtitle">Autonomous YouTube Ingestion & Gemini AI</p>
+            </div>
+        </div>
+
+        <div class="header-actions">
+            <button class="btn btn-secondary" id="btnScanFolder" title="Scan watch folder now">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                    <path d="M3 3v5h5"/>
+                    <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+                    <path d="M16 21h5v-5"/>
+                </svg>
+                Scan Folder
+            </button>
+            <button class="btn btn-secondary" id="btnOpenSettings" title="Open Settings">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                </svg>
+                Settings
+            </button>
+            <div class="agent-mode-pill" id="agentModePill">
+                <span class="mode-dot"></span>
+                <span id="agentModeText">Review Mode</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="app-layout">
+        <!-- Top Status Overview Grid -->
+        <section class="overview-grid" id="statusGrid">
+            <!-- YouTube Account Card -->
+            <div class="card status-card" id="cardYouTube">
+                <div class="card-header">
+                    <span class="card-label">YouTube Account</span>
+                    <span class="badge" id="badgeYouTubeAuth">Checking...</span>
+                </div>
+                <div class="channel-profile" id="channelProfile">
+                    <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=120&q=80" alt="Avatar" class="channel-avatar" id="channelAvatar">
+                    <div class="channel-meta">
+                        <div class="channel-name" id="channelName">Not Connected</div>
+                        <div class="channel-stats" id="channelStats">Connect Google OAuth to upload</div>
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-block" id="btnConnectYouTube">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15h-2v-6h2v6zm4 0h-2v-6h2v6z"/>
+                    </svg>
+                    Connect / Switch Channel
+                </button>
+            </div>
+
+            <!-- Watcher Status Card -->
+            <div class="card status-card" id="cardWatcher">
+                <div class="card-header">
+                    <span class="card-label">Folder Watcher</span>
+                    <span class="badge badge-success" id="badgeWatcherStatus">Active</span>
+                </div>
+                <div class="folder-info">
+                    <div class="folder-path-label">Monitored Folder:</div>
+                    <div class="folder-path-box" id="watchFolderPath" title="Click to copy">
+                        Loading folder...
+                    </div>
+                    <div class="folder-hint">Drop video files into this directory or use the dropzone below.</div>
+                </div>
+                <div class="mini-stats">
+                    <div class="stat-item">
+                        <div class="stat-number" id="statPending">0</div>
+                        <div class="stat-label">In Queue</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="statUploaded">0</div>
+                        <div class="stat-label">Uploaded</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="statTotal">0</div>
+                        <div class="stat-label">Total Jobs</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gemini AI Intelligence Card -->
+            <div class="card status-card" id="cardGemini">
+                <div class="card-header">
+                    <span class="card-label">Gemini AI Engine</span>
+                    <span class="badge" id="badgeGeminiStatus">Checking...</span>
+                </div>
+                <div class="ai-feature-list">
+                    <div class="ai-feature-item">
+                        <span class="check-icon">✓</span>
+                        <span>Video Multimodal Analysis</span>
+                    </div>
+                    <div class="ai-feature-item">
+                        <span class="check-icon">✓</span>
+                        <span>High-CTR Title Generation</span>
+                    </div>
+                    <div class="ai-feature-item">
+                        <span class="check-icon">✓</span>
+                        <span>SEO Description & Tags</span>
+                    </div>
+                </div>
+                <div class="model-badge-box">
+                    <span class="model-badge" id="geminiModelName">gemini-2.5-flash</span>
+                    <span class="privacy-badge" id="defaultPrivacyBadge">Privacy: Private</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Dropzone Section -->
+        <section class="dropzone-section" id="dropzoneSection">
+            <div class="dropzone" id="fileDropzone">
+                <input type="file" id="fileInput" accept="video/*" style="display: none;">
+                <div class="dropzone-content">
+                    <div class="dropzone-icon">
+                        <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.8">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                    </div>
+                    <h3 class="dropzone-title">Drop video files here to process</h3>
+                    <p class="dropzone-subtitle">Or browse your computer &bull; Supported: MP4, MOV, MKV, AVI, WEBM</p>
+                </div>
+                <div class="dropzone-progress" id="dropzoneProgress" style="display: none;">
+                    <div class="progress-bar-fill" id="dropzoneProgressBar"></div>
+                    <span id="dropzoneProgressText">Uploading 0%...</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Video Queue Section -->
+        <section class="videos-section" id="videosSection">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">Video Pipeline & Queue</h2>
+                    <p class="section-subtitle">Real-time detection, AI optimization, and YouTube upload status</p>
+                </div>
+                <div class="filter-controls">
+                    <button class="filter-btn active" data-filter="all">All</button>
+                    <button class="filter-btn" data-filter="review_ready">Needs Review</button>
+                    <button class="filter-btn" data-filter="uploading">Uploading</button>
+                    <button class="filter-btn" data-filter="uploaded">Completed</button>
+                </div>
+            </div>
+
+            <div class="video-list-container" id="videoListContainer">
+                <!-- Dynamically populated or empty state -->
+                <div class="empty-state" id="emptyState">
+                    <div class="empty-state-icon">🎬</div>
+                    <h3 class="empty-state-title">No videos in pipeline yet</h3>
+                    <p class="empty-state-subtitle">Drop a video into the watch folder or drag one above to see the AI agent in action.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Live Agent Activity Log Console -->
+        <section class="logs-section" id="logsSection">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">Live Agent Activity Log</h2>
+                    <p class="section-subtitle">Real-time autonomous stream of watcher, Gemini, and YouTube events</p>
+                </div>
+                <button class="btn btn-sm btn-ghost" id="btnClearLogs">Clear Log</button>
+            </div>
+            <div class="terminal-container" id="terminalContainer">
+                <div class="terminal-body" id="terminalLogs">
+                    <div class="log-line log-system">
+                        <span class="log-ts">--:--:--</span>
+                        <span class="log-src">[System]</span>
+                        <span class="log-msg">Connecting to live agent telemetry stream...</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal: Edit / Review Video Metadata -->
+    <div class="modal-overlay" id="metadataModal" style="display: none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalVideoFilename">Review & Edit YouTube Metadata</h3>
+                <button class="modal-close-btn" id="btnCloseMetadataModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editVideoId">
+                <div class="form-group">
+                    <label for="editVideoTitle">YouTube Video Title</label>
+                    <input type="text" id="editVideoTitle" class="form-control" maxlength="100" placeholder="Catchy, high-CTR title">
+                    <small class="form-hint"><span id="titleCharCount">0</span>/100 characters</small>
+                </div>
+                <div class="form-group">
+                    <label for="editVideoDescription">Description (SEO, chapters, links)</label>
+                    <textarea id="editVideoDescription" class="form-control form-textarea" rows="6" placeholder="Video description"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group col-6">
+                        <label for="editVideoCategory">Category</label>
+                        <select id="editVideoCategory" class="form-control">
+                            <option value="28">Science & Technology</option>
+                            <option value="27">Education</option>
+                            <option value="24">Entertainment</option>
+                            <option value="20">Gaming</option>
+                            <option value="22">People & Blogs</option>
+                            <option value="26">Howto & Style</option>
+                            <option value="10">Music</option>
+                            <option value="17">Sports</option>
+                            <option value="1">Film & Animation</option>
+                        </select>
+                    </div>
+                    <div class="form-group col-6">
+                        <label for="editVideoPrivacy">Privacy Status</label>
+                        <select id="editVideoPrivacy" class="form-control">
+                            <option value="private">Private (Verified in Studio)</option>
+                            <option value="unlisted">Unlisted (Direct link only)</option>
+                            <option value="public">Public (Published immediately)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="editVideoTags">Tags (Comma-separated)</label>
+                    <input type="text" id="editVideoTags" class="form-control" placeholder="ai, agent, youtube, tutorial">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="btnCancelEdit">Cancel</button>
+                <button class="btn btn-primary" id="btnSaveMetadata">Save Changes</button>
+                <button class="btn btn-success" id="btnApproveAndUpload">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                        <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
+                    </svg>
+                    Approve & Upload to YouTube
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Connect YouTube Account -->
+    <div class="modal-overlay" id="authModal" style="display: none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 class="modal-title">Connect YouTube Account</h3>
+                <button class="modal-close-btn" id="btnCloseAuthModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="setup-steps">
+                    <div class="step-box">
+                        <div class="step-num">1</div>
+                        <div class="step-desc">
+                            <strong>Google Cloud Credentials:</strong>
+                            <p>To upload under your specific channel, you need an OAuth Client ID from Google Cloud Console.</p>
+                            <a href="https://console.cloud.google.com/apis/credentials" target="_blank" class="external-link">Open Google Cloud Credentials ↗</a>
+                        </div>
+                    </div>
+                    <div class="step-box">
+                        <div class="step-num">2</div>
+                        <div class="step-desc">
+                            <strong>Provide client_secrets.json:</strong>
+                            <div class="drop-zone-mini" id="secretDropzone">
+                                <input type="file" id="secretFileInput" accept=".json" style="display: none;">
+                                <p>Drag & drop <code>client_secrets.json</code> here or <span class="highlight-click">browse</span></p>
+                            </div>
+                            <div class="or-divider">OR paste JSON:</div>
+                            <textarea id="rawSecretJson" class="form-control" rows="3" placeholder='{"installed": {"client_id": "...", ...}}'></textarea>
+                            <button class="btn btn-sm btn-secondary mt-2" id="btnSaveClientSecret">Save Client Secrets</button>
+                        </div>
+                    </div>
+                    <div class="step-box">
+                        <div class="step-num">3</div>
+                        <div class="step-desc">
+                            <strong>Sign In With YouTube:</strong>
+                            <p>Click below to open the official Google authentication consent screen in your browser and authorize your channel.</p>
+                            <button class="btn btn-primary" id="btnTriggerOAuth">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15h-2v-6h2v6zm4 0h-2v-6h2v6z"/>
+                                </svg>
+                                Launch YouTube OAuth Sign-In
+                            </button>
+                            <div id="authStatusAlert" class="auth-alert" style="display: none;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="btnCloseAuthModalBottom">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Settings -->
+    <div class="modal-overlay" id="settingsModal" style="display: none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 class="modal-title">Agent Configuration</h3>
+                <button class="modal-close-btn" id="btnCloseSettingsModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="settingWatchFolder">Watch Folder Path</label>
+                    <input type="text" id="settingWatchFolder" class="form-control">
+                    <small class="form-hint">Folder continuously scanned for new videos.</small>
+                </div>
+                <div class="form-group">
+                    <label for="settingProcessedFolder">Processed Folder Path</label>
+                    <input type="text" id="settingProcessedFolder" class="form-control">
+                    <small class="form-hint">Where uploaded files are automatically moved after success.</small>
+                </div>
+                <div class="form-group">
+                    <label for="settingGeminiApiKey">Gemini API Key</label>
+                    <input type="password" id="settingGeminiApiKey" class="form-control" placeholder="AIzaSy...">
+                    <small class="form-hint">Get an API key at <a href="https://aistudio.google.com/apikey" target="_blank" class="external-link">Google AI Studio ↗</a>.</small>
+                </div>
+                <div class="form-row">
+                    <div class="form-group col-6">
+                        <label for="settingGeminiModel">Gemini Model</label>
+                        <select id="settingGeminiModel" class="form-control">
+                            <option value="gemini-2.5-flash">gemini-2.5-flash (Fast & Multimodal)</option>
+                            <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+                            <option value="gemini-1.5-pro">gemini-1.5-pro (Deep analysis)</option>
+                        </select>
+                    </div>
+                    <div class="form-group col-6">
+                        <label for="settingDefaultPrivacy">Default Privacy</label>
+                        <select id="settingDefaultPrivacy" class="form-control">
+                            <option value="private">Private (Recommended)</option>
+                            <option value="unlisted">Unlisted</option>
+                            <option value="public">Public</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group checkbox-group">
+                    <label class="switch-label">
+                        <input type="checkbox" id="settingAutoUpload">
+                        <span class="switch-slider"></span>
+                        <span class="switch-text">Auto-Upload Mode (Upload immediately without requiring manual approval)</span>
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="btnCancelSettings">Cancel</button>
+                <button class="btn btn-primary" id="btnSaveSettings">Save Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
