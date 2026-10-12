@@ -248,6 +248,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" id="btnCancelEdit">Cancel</button>
+                <button class="btn btn-outline-primary" id="btnModalRegenerate" title="Re-run AI to generate rich description & 10+ keywords">✨ Regenerate AI</button>
                 <button class="btn btn-primary" id="btnSaveMetadata">Save Changes</button>
                 <button class="btn btn-success" id="btnApproveAndUpload">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
@@ -338,8 +339,9 @@
                     <div class="form-group col-6">
                         <label for="settingGeminiModel">Gemini Model</label>
                         <select id="settingGeminiModel" class="form-control">
-                            <option value="gemini-2.5-flash">gemini-2.5-flash (Fast & Multimodal)</option>
-                            <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+                            <option value="gemini-3.8-flash">gemini-3.8-flash (Recommended & Latest)</option>
+                            <option value="gemini-2.0-flash">gemini-2.0-flash (Fast & Multimodal)</option>
+                            <option value="gemini-1.5-flash">gemini-1.5-flash</option>
                             <option value="gemini-1.5-pro">gemini-1.5-pro (Deep analysis)</option>
                         </select>
                     </div>

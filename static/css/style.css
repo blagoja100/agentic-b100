@@ -814,6 +814,20 @@ body {
     background: rgba(255, 255, 255, 0.05);
 }
 
+.btn-outline-primary {
+    background: rgba(168, 85, 247, 0.12);
+    color: #c084fc;
+    border: 1px solid rgba(168, 85, 247, 0.35);
+}
+
+.btn-outline-primary:hover {
+    background: rgba(168, 85, 247, 0.25);
+    border-color: rgba(192, 132, 252, 0.6);
+    color: #ffffff;
+    box-shadow: 0 0 14px rgba(168, 85, 247, 0.35);
+    transform: translateY(-1px);
+}
+
 .btn-sm {
     padding: 5px 10px;
     font-size: 11px;

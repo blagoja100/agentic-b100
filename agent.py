@@ -194,9 +194,6 @@ class TubeAgent:
                     shutil.move(str(sidecar), str(target_sidecar))
 
             # Update DB with new filepath
-            with youtube_uploader.build("youtube", "v3", credentials=None) if False else None:
-                pass
-            
             from db import get_db_connection
             with get_db_connection() as conn:
                 cursor = conn.cursor()

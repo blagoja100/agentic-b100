@@ -6,8 +6,8 @@ services:
     container_name: tubeagent
     restart: unless-stopped
     ports:
-      - "8000:8000"   # TubeAgent Web Dashboard & API
-      - "8088:8088"   # YouTube OAuth browser authorization redirect
+      - "127.0.0.1:8000:8000" # TubeAgent Web Dashboard & API
+      - "127.0.0.1:8088:8088" # YouTube OAuth browser authorization redirect
     env_file:
       - path: .env
         required: false
@@ -25,6 +25,6 @@ services:
       # Change LOCAL_WATCH_FOLDER in .env or set below to any local path on your laptop!
       - "${LOCAL_WATCH_FOLDER:-./watch_folder}:/app/watch_folder"
       - "${LOCAL_PROCESSED_FOLDER:-./processed_folder}:/app/processed_folder"
-      
+
       # Persistent storage for SQLite database, upload history, and OAuth tokens
       - "${LOCAL_DATA_FOLDER:-./data}:/app/data"

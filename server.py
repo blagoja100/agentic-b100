@@ -172,6 +172,68 @@ async def update_video(video_id: int, req: VideoUpdateRequest):
         category_id=req.category_id,
         privacy_status=req.privacy_status
     )
+
+    # Sync update to live YouTube video if already uploaded
+    if video.get("youtube_video_id"):
+        try:
+            youtube_uploader.update_youtube_video_metadata(
+                youtube_video_id=video["youtube_video_id"],
+                title=req.title,
+                description=req.description,
+                tags=req.tags,
+                category_id=req.category_id
+            )
+        except Exception as e:
+            log_event("WARNING", "Server", f"Could not sync update to YouTube: {e}", video_id)
+
+    updated = get_video_by_id(video_id)
+    agent_instance.events.emit("video_updated", updated)
+    return {"status": "success", "video": updated}
+
+
+@app.post("/api/videos/{video_id}/regenerate")
+async def regenerate_video_metadata(video_id: int):
+    video = get_video_by_id(video_id)
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+
+    video_path = Path(video["filepath"])
+    if not video_path.exists():
+        candidates = [
+            Config.WATCH_FOLDER / video["filename"],
+            Config.PROCESSED_FOLDER / video["filename"],
+            Config.FAILED_FOLDER / video["filename"],
+        ]
+        for c in candidates:
+            if c.exists():
+                video_path = c
+                break
+
+    log_event("INFO", "Agent", f"Regenerating metadata for video #{video_id} ('{video['filename']}')...", video_id)
+    new_metadata = ai_generator.generate_video_metadata(video_path, video_id)
+
+    update_video_metadata(
+        video_id=video_id,
+        title=new_metadata["title"],
+        description=new_metadata["description"],
+        tags=new_metadata["tags"],
+        category_id=new_metadata["category_id"],
+        privacy_status=video.get("privacy_status", Config.DEFAULT_PRIVACY)
+    )
+
+    # If already on YouTube, update live video
+    if video.get("youtube_video_id"):
+        try:
+            youtube_uploader.update_youtube_video_metadata(
+                youtube_video_id=video["youtube_video_id"],
+                title=new_metadata["title"],
+                description=new_metadata["description"],
+                tags=new_metadata["tags"],
+                category_id=new_metadata["category_id"]
+            )
+        except Exception as e:
+            log_event("WARNING", "Server", f"Could not sync regenerated metadata to YouTube: {e}", video_id)
+
     updated = get_video_by_id(video_id)
     agent_instance.events.emit("video_updated", updated)
     return {"status": "success", "video": updated}

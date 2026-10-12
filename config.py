@@ -9,8 +9,11 @@ from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent
 ENV_PATH = BASE_DIR / ".env"
+DATA_ENV_PATH = (Path(os.getenv("DATA_DIR", str(BASE_DIR / "data"))).resolve()) / ".env"
 
-# Load existing .env if present
+# Load existing .env if present (check data folder first for container persistence)
+if DATA_ENV_PATH.exists():
+    load_dotenv(DATA_ENV_PATH)
 load_dotenv(ENV_PATH)
 
 
@@ -33,7 +36,7 @@ class Config:
     
     # Gemini AI Settings
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
-    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
     
     # Agent Workflow
     AUTO_UPLOAD: bool = os.getenv("AUTO_UPLOAD", "false").lower() in ("true", "1", "yes")
@@ -57,29 +60,39 @@ class Config:
 
     @classmethod
     def update_setting(cls, key: str, value: str):
-        """Update a setting in memory and in the .env file."""
+        """Update a setting in memory and in the .env file (both local and data volume)."""
         os.environ[key] = value
         
-        # Read existing .env lines
-        lines = []
-        if ENV_PATH.exists():
-            with open(ENV_PATH, "r", encoding="utf-8") as f:
-                lines = f.readlines()
-        
-        found = False
-        new_lines = []
-        for line in lines:
-            if line.strip().startswith(f"{key}="):
-                new_lines.append(f"{key}={value}\n")
-                found = True
-            else:
-                new_lines.append(line)
-        
-        if not found:
-            new_lines.append(f"{key}={value}\n")
+        # Save to both BASE_DIR / .env and DATA_DIR / .env so Docker restarts retain keys
+        paths_to_update = [ENV_PATH]
+        data_env = cls.DATA_DIR / ".env"
+        if data_env != ENV_PATH:
+            paths_to_update.append(data_env)
             
-        with open(ENV_PATH, "w", encoding="utf-8") as f:
-            f.writelines(new_lines)
+        for path in paths_to_update:
+            try:
+                lines = []
+                if path.exists():
+                    with open(path, "r", encoding="utf-8") as f:
+                        lines = f.readlines()
+                
+                found = False
+                new_lines = []
+                for line in lines:
+                    if line.strip().startswith(f"{key}="):
+                        new_lines.append(f"{key}={value}\n")
+                        found = True
+                    else:
+                        new_lines.append(line)
+                
+                if not found:
+                    new_lines.append(f"{key}={value}\n")
+                    
+                path.parent.mkdir(parents=True, exist_ok=True)
+                with open(path, "w", encoding="utf-8") as f:
+                    f.writelines(new_lines)
+            except Exception:
+                pass
             
         # Re-sync attributes
         if key == "WATCH_FOLDER":

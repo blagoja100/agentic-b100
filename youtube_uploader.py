@@ -19,7 +19,8 @@ from db import log_event
 
 SCOPES = [
     "https://www.googleapis.com/auth/youtube.upload",
-    "https://www.googleapis.com/auth/youtube.readonly"
+    "https://www.googleapis.com/auth/youtube.readonly",
+    "https://www.googleapis.com/auth/youtube.force-ssl"
 ]
 
 
@@ -250,3 +251,39 @@ def upload_video_to_youtube(
         "title": title,
         "privacy_status": privacy_status
     }
+
+
+def update_youtube_video_metadata(
+    youtube_video_id: str,
+    title: str,
+    description: str,
+    tags: str,
+    category_id: str
+) -> bool:
+    """Updates snippet metadata for an already-uploaded YouTube video."""
+    youtube = get_authenticated_service()
+    if not youtube:
+        log_event("WARNING", "YouTube", "Cannot update YouTube video: Account not authenticated.")
+        return False
+
+    tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else []
+    body = {
+        "id": youtube_video_id,
+        "snippet": {
+            "title": title[:100],
+            "description": description,
+            "tags": tag_list,
+            "categoryId": str(category_id)
+        }
+    }
+
+    try:
+        youtube.videos().update(
+            part="snippet",
+            body=body
+        ).execute()
+        log_event("SUCCESS", "YouTube", f"Updated live YouTube video metadata for ID '{youtube_video_id}'.")
+        return True
+    except Exception as e:
+        log_event("ERROR", "YouTube", f"Failed to update YouTube video {youtube_video_id}: {e}")
+        return False

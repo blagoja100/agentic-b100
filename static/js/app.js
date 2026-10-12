@@ -256,17 +256,20 @@ document.addEventListener("DOMContentLoaded", () => {
             let actionButtons = "";
             if (video.status === "review_ready") {
                 actionButtons = `
+                    <button class="btn btn-sm btn-outline-primary btn-regenerate" data-id="${video.id}" title="Re-run AI for rich description & 10+ tags">✨ AI Polish</button>
                     <button class="btn btn-sm btn-secondary btn-edit" data-id="${video.id}">Edit Details</button>
                     <button class="btn btn-sm btn-success btn-approve" data-id="${video.id}">Approve & Upload</button>
                 `;
             } else if (video.status === "uploaded") {
                 actionButtons = `
                     <a href="${video.youtube_url}" target="_blank" class="btn btn-sm btn-primary">Watch on YouTube ↗</a>
+                    <button class="btn btn-sm btn-outline-primary btn-regenerate" data-id="${video.id}" title="Re-generate and sync rich metadata to YouTube">✨ AI Polish</button>
                     <button class="btn btn-sm btn-secondary btn-edit" data-id="${video.id}">View Metadata</button>
                 `;
             } else if (video.status === "failed") {
                 actionButtons = `
                     <button class="btn btn-sm btn-warning btn-retry" data-id="${video.id}">Retry</button>
+                    <button class="btn btn-sm btn-outline-primary btn-regenerate" data-id="${video.id}">✨ AI Polish</button>
                     <button class="btn btn-sm btn-secondary btn-edit" data-id="${video.id}">Edit</button>
                 `;
             } else if (video.status === "uploading") {
@@ -277,10 +280,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 <button class="btn btn-sm btn-ghost btn-delete" data-id="${video.id}" title="Delete record">&times;</button>
             `;
 
-            // Tag bubbles
+            // Tag bubbles (show up to 15 tags)
             let tagBubbles = "";
             if (video.tags) {
-                const tagsList = video.tags.split(",").slice(0, 6);
+                const tagsList = video.tags.split(",").slice(0, 15);
                 tagBubbles = tagsList.map(t => `<span class="tag-bubble">#${escapeHtml(t.trim())}</span>`).join(" ");
             }
 
@@ -328,6 +331,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function attachCardActionHandlers() {
+        document.querySelectorAll(".btn-regenerate").forEach(btn => {
+            btn.onclick = () => triggerRegenerate(parseInt(btn.dataset.id));
+        });
         document.querySelectorAll(".btn-edit").forEach(btn => {
             btn.onclick = () => openEditModal(parseInt(btn.dataset.id));
         });
@@ -340,6 +346,19 @@ document.addEventListener("DOMContentLoaded", () => {
         document.querySelectorAll(".btn-delete").forEach(btn => {
             btn.onclick = () => triggerDelete(parseInt(btn.dataset.id));
         });
+    }
+
+    async function triggerRegenerate(videoId) {
+        try {
+            showToast(`Generating rich AI description & 10+ keywords for video #${videoId}...`, "info");
+            const res = await fetch(`/api/videos/${videoId}/regenerate`, { method: "POST" });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || "Regeneration failed");
+            showToast("✨ AI generated rich description & 10+ keywords!", "success");
+            loadVideos();
+        } catch (err) {
+            showToast(err.message, "error");
+        }
     }
 
     // --- Action Handlers ---
@@ -406,6 +425,35 @@ document.addEventListener("DOMContentLoaded", () => {
 
     btnCloseMetadataModal.onclick = () => metadataModal.style.display = "none";
     btnCancelEdit.onclick = () => metadataModal.style.display = "none";
+
+    const btnModalRegenerate = document.getElementById("btnModalRegenerate");
+    if (btnModalRegenerate) {
+        btnModalRegenerate.onclick = async () => {
+            const videoId = parseInt(editVideoId.value);
+            if (!videoId) return;
+            try {
+                btnModalRegenerate.disabled = true;
+                btnModalRegenerate.textContent = "⏳ Generating...";
+                showToast("Generating rich AI description & 10+ tags...", "info");
+                const res = await fetch(`/api/videos/${videoId}/regenerate`, { method: "POST" });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || "Regeneration failed");
+                const updated = data.video;
+                editVideoTitle.value = updated.title || "";
+                editVideoDescription.value = updated.description || "";
+                editVideoTags.value = updated.tags || "";
+                editVideoCategory.value = updated.category_id || "28";
+                updateCharCount();
+                showToast("✨ Generated rich description and 10+ tags!", "success");
+                loadVideos();
+            } catch (err) {
+                showToast(err.message, "error");
+            } finally {
+                btnModalRegenerate.disabled = false;
+                btnModalRegenerate.textContent = "✨ Regenerate AI";
+            }
+        };
+    }
 
     btnSaveMetadata.onclick = async () => {
         const videoId = parseInt(editVideoId.value);
