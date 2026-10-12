@@ -27,12 +27,22 @@ class Config:
     WATCH_FOLDER: Path = Path(os.getenv("WATCH_FOLDER", str(BASE_DIR / "watch_folder"))).resolve()
     PROCESSED_FOLDER: Path = Path(os.getenv("PROCESSED_FOLDER", str(BASE_DIR / "processed_folder"))).resolve()
     FAILED_FOLDER: Path = Path(os.getenv("FAILED_FOLDER", str(BASE_DIR / "failed_folder"))).resolve()
+    CAT_VIDEOS_FOLDER: Path = Path(os.getenv("CAT_VIDEOS_FOLDER", str(BASE_DIR / "cat_videos"))).resolve()
     
     # YouTube Settings - checks DATA_DIR first, then BASE_DIR
     CLIENT_SECRETS_FILE: Path = Path(os.getenv("CLIENT_SECRETS_FILE", str(BASE_DIR / "data" / "client_secrets.json" if (BASE_DIR / "data" / "client_secrets.json").exists() else BASE_DIR / "client_secrets.json"))).resolve()
     TOKEN_FILE: Path = Path(os.getenv("TOKEN_FILE", str(BASE_DIR / "data" / "token.json" if (BASE_DIR / "data" / "token.json").exists() else BASE_DIR / "token.json"))).resolve()
     DEFAULT_PRIVACY: str = os.getenv("DEFAULT_PRIVACY", "private")  # private, unlisted, public
     DEFAULT_CATEGORY_ID: str = os.getenv("DEFAULT_CATEGORY_ID", "28")  # 28: Science & Technology
+    
+    # Cat Agent & Gmail Settings
+    GMAIL_TOKEN_FILE: Path = Path(os.getenv("GMAIL_TOKEN_FILE", str(BASE_DIR / "data" / "gmail_token.json" if (BASE_DIR / "data" / "gmail_token.json").exists() else BASE_DIR / "gmail_token.json"))).resolve()
+    GMAIL_SUBJECT_PREFIX: str = os.getenv("GMAIL_SUBJECT_PREFIX", "Be100 Prod:")
+    GMAIL_POLL_INTERVAL_SECONDS: int = int(os.getenv("GMAIL_POLL_INTERVAL_SECONDS", "30"))
+    GMAIL_AUTO_MARK_READ: bool = os.getenv("GMAIL_AUTO_MARK_READ", "true").lower() in ("true", "1", "yes")
+    VEO_MODEL: str = os.getenv("VEO_MODEL", "veo-2.0-generate-001")
+    VEO_ASPECT_RATIO: str = os.getenv("VEO_ASPECT_RATIO", "9:16")
+    VEO_DURATION_SECONDS: int = int(os.getenv("VEO_DURATION_SECONDS", "10"))
     
     # Gemini AI Settings
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
@@ -57,6 +67,7 @@ class Config:
         cls.WATCH_FOLDER.mkdir(parents=True, exist_ok=True)
         cls.PROCESSED_FOLDER.mkdir(parents=True, exist_ok=True)
         cls.FAILED_FOLDER.mkdir(parents=True, exist_ok=True)
+        cls.CAT_VIDEOS_FOLDER.mkdir(parents=True, exist_ok=True)
 
     @classmethod
     def update_setting(cls, key: str, value: str):
@@ -107,3 +118,11 @@ class Config:
             cls.GEMINI_MODEL = value
         elif key == "AUTO_UPLOAD":
             cls.AUTO_UPLOAD = value.lower() in ("true", "1", "yes")
+        elif key == "CAT_VIDEOS_FOLDER":
+            cls.CAT_VIDEOS_FOLDER = Path(value).resolve()
+        elif key == "GMAIL_SUBJECT_PREFIX":
+            cls.GMAIL_SUBJECT_PREFIX = value
+        elif key == "GMAIL_POLL_INTERVAL_SECONDS":
+            cls.GMAIL_POLL_INTERVAL_SECONDS = int(value)
+        elif key == "VEO_MODEL":
+            cls.VEO_MODEL = value

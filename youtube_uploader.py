@@ -62,49 +62,26 @@ def get_authenticated_service() -> Optional[Any]:
     return None
 
 
-def run_oauth_flow(port: int = 8088) -> Dict[str, Any]:
+def start_youtube_oauth(port: Optional[int] = None, on_success: Optional[Callable] = None) -> Dict[str, Any]:
     """
-    Runs local webserver OAuth flow to authenticate YouTube account.
-    Supports binding to 0.0.0.0 inside Docker while redirecting to localhost.
+    Starts unified OAuth flow for YouTube, returning auth_url immediately
+    and handling callback without port collisions.
     """
-    client_secrets_file = Config.CLIENT_SECRETS_FILE
-    if not client_secrets_file.exists():
-        raise FileNotFoundError(
-            f"Client secrets file not found at '{client_secrets_file}'. "
-            "Please download your client_secrets.json from Google Cloud Console."
-        )
+    from oauth_manager import start_oauth_flow
+    return start_oauth_flow(
+        service_name="YouTube",
+        scopes=SCOPES,
+        token_file=Config.TOKEN_FILE,
+        port=port,
+        on_success=on_success
+    )
 
-    flow = InstalledAppFlow.from_client_secrets_file(str(client_secrets_file), SCOPES)
-    bind_addr = os.getenv("OAUTH_BIND_ADDR", "0.0.0.0")
-    oauth_host = os.getenv("OAUTH_HOST", "localhost")
 
-    try:
-        creds = flow.run_local_server(
-            host=oauth_host,
-            bind_addr=bind_addr,
-            port=port,
-            prompt="consent",
-            access_type="offline",
-            open_browser=True
-        )
-    except Exception as e:
-        log_event("INFO", "YouTube", f"Falling back to non-browser open flow: {e}")
-        creds = flow.run_local_server(
-            host=oauth_host,
-            bind_addr=bind_addr,
-            port=port,
-            prompt="consent",
-            access_type="offline",
-            open_browser=False
-        )
-
-    # Ensure parent directory for token file exists
-    Config.TOKEN_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with open(Config.TOKEN_FILE, "w", encoding="utf-8") as f:
-        f.write(creds.to_json())
-
-    log_event("SUCCESS", "YouTube", "Successfully authenticated with YouTube!")
-    return get_channel_info()
+def run_oauth_flow(port: Optional[int] = None) -> Dict[str, Any]:
+    """
+    Runs OAuth flow to authenticate YouTube account.
+    """
+    return start_youtube_oauth(port=port)
 
 
 def get_channel_info() -> Dict[str, Any]:

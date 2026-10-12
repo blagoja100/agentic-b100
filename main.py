@@ -13,6 +13,7 @@ import time
 import argparse
 import uvicorn
 from pathlib import Path
+from typing import Optional
 
 # Ensure UTF-8 output on Windows consoles
 if sys.platform == "win32":
@@ -125,6 +126,20 @@ def show_status():
     print(f"\n[Video Queue: {len(videos)} total]")
     for v in videos[:10]:
         print(f" - #{v['id']} [{v['status']}] {v['filename']} -> {v.get('title') or '(no title)'}")
+
+    # CatAgent status
+    from db import get_all_cat_jobs
+    from cat_agent.gmail_monitor import is_gmail_authenticated
+    cat_jobs = get_all_cat_jobs()
+    is_gmail_auth, gmail_email = is_gmail_authenticated()
+    print("\n[CatAgent (Be100 Gmail Explainer)]")
+    print(f"Gmail Account:      {gmail_email if is_gmail_auth else 'Not connected'}")
+    print(f"Subject Matcher:    {Config.GMAIL_SUBJECT_PREFIX} [title]")
+    print(f"Veo Model:          {Config.VEO_MODEL}")
+    print(f"Cat Videos Folder:  {Config.CAT_VIDEOS_FOLDER}")
+    print(f"Cat Video Jobs:     {len(cat_jobs)} total")
+    for j in cat_jobs[:5]:
+        print(f" - #{j['id']} [{j['status']}] {j.get('title')} -> {j.get('generated_video_path') or j.get('source_url')}")
     print("=" * 60 + "\n")
 
 
@@ -146,10 +161,99 @@ def create_test_video():
     print(f"✅ Created companion notes: {notes_file}")
 
 
+def run_cat_daemon():
+    """Runs Cat Explainer Agent as a headless background terminal daemon."""
+    init_db()
+    Config.ensure_directories()
+    from cat_agent import cat_agent_instance
+    from cat_agent.gmail_monitor import is_gmail_authenticated
+
+    print("\n" + "=" * 60)
+    print("🐱 CatAgent Running in Headless Daemon Mode")
+    print(f"📧 Gmail Subject Prefix: '{Config.GMAIL_SUBJECT_PREFIX}'")
+    print(f"⏱️ Poll Interval:        {Config.GMAIL_POLL_INTERVAL_SECONDS}s")
+    print(f"🎬 Video Model:           {Config.VEO_MODEL}")
+    print(f"📁 Output Folder:         {Config.CAT_VIDEOS_FOLDER}")
+    
+    is_auth, email_addr = is_gmail_authenticated()
+    if is_auth:
+        print(f"🔑 Gmail Auth:            Connected as {email_addr} ✓")
+    else:
+        print("⚠️ Gmail Auth:            Not connected. Run 'python main.py --cat-auth' to authenticate.")
+    print("=" * 60 + "\n")
+
+    cat_agent_instance.start()
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("\nStopping CatAgent daemon...")
+        cat_agent_instance.stop()
+        print("CatAgent stopped gracefully.")
+
+
+def run_cat_auth_cli():
+    """Interactive Gmail OAuth setup in CLI."""
+    init_db()
+    Config.ensure_directories()
+    from cat_agent.gmail_monitor import run_gmail_oauth_flow
+    print("\n" + "=" * 60)
+    print("📧 Gmail Account OAuth Setup for CatAgent")
+    print("=" * 60)
+    print("Launching browser for Gmail permissions...")
+    try:
+        res = run_gmail_oauth_flow(port=8089)
+        print(f"\n✅ Authenticated successfully with Gmail: {res.get('email')}")
+    except Exception as e:
+        print(f"\n❌ Gmail authentication failed: {e}")
+
+
+def run_cat_check_cli():
+    """Performs a single Gmail inbox poll and processes matching emails."""
+    init_db()
+    Config.ensure_directories()
+    from cat_agent import cat_agent_instance
+    print("Checking Gmail inbox for 'Be100 Prod:' emails...")
+    jobs = cat_agent_instance.check_now()
+    if jobs:
+        print(f"✅ Found and launched {len(jobs)} jobs:")
+        for j in jobs:
+            print(f" - #{j['id']} [{j['status']}] {j.get('title')} -> {j.get('source_url')}")
+    else:
+        print("No new matching emails found.")
+
+
+def run_cat_test_cli(url: str, title: Optional[str] = None):
+    """Downloads a video link and generates a 10s cat video explainer."""
+    init_db()
+    Config.ensure_directories()
+    from cat_agent import cat_agent_instance
+    print(f"\n🚀 Testing CatAgent pipeline for URL: {url}")
+    job_id = cat_agent_instance.process_url(url=url, title=title)
+    print(f"Launched Job #{job_id}. Processing in background...")
+    
+    # Wait for completion
+    from db import get_cat_job_by_id
+    while True:
+        job = get_cat_job_by_id(job_id)
+        status = job.get("status")
+        progress = job.get("progress", 0)
+        print(f"\rStatus: [{status}] {progress}%...", end="", flush=True)
+        if status in ["completed", "failed"]:
+            print()
+            if status == "completed":
+                print(f"✅ Generated Cat Video: {job.get('generated_video_path')}")
+                print(f"🗣️ Cat Script: {job.get('cat_script')}")
+            else:
+                print(f"❌ Failed: {job.get('error_message')}")
+            break
+        time.sleep(2)
+
+
 def main():
-    parser = argparse.ArgumentParser(description="TubeAgent - Autonomous YouTube Video AI Agent")
+    parser = argparse.ArgumentParser(description="TubeAgent & CatAgent - Autonomous AI Agents")
     parser.add_argument("--web", action="store_true", help="Start Web Dashboard (Default)")
-    parser.add_argument("--daemon", action="store_true", help="Run in headless terminal daemon mode")
+    parser.add_argument("--daemon", action="store_true", help="Run TubeAgent in headless terminal daemon mode")
     parser.add_argument("--auth", action="store_true", help="Run YouTube OAuth setup wizard")
     parser.add_argument("--status", action="store_true", help="Show system status and channel details")
     parser.add_argument("--scan", action="store_true", help="Perform a single folder scan")
@@ -157,9 +261,24 @@ def main():
     parser.add_argument("--port", type=int, default=8000, help="Web dashboard port")
     parser.add_argument("--host", type=str, default="127.0.0.1", help="Web dashboard host")
 
+    # CatAgent CLI arguments
+    parser.add_argument("--cat-agent", action="store_true", help="Run Cat Explainer Agent daemon")
+    parser.add_argument("--cat-auth", action="store_true", help="Authenticate Gmail account for CatAgent")
+    parser.add_argument("--cat-check", action="store_true", help="Check Gmail inbox once for Be100 emails")
+    parser.add_argument("--cat-test", type=str, help="Directly test video URL with CatAgent pipeline")
+    parser.add_argument("--title", type=str, help="Title to accompany --cat-test")
+
     args = parser.parse_args()
 
-    if args.daemon:
+    if args.cat_agent:
+        run_cat_daemon()
+    elif args.cat_auth:
+        run_cat_auth_cli()
+    elif args.cat_check:
+        run_cat_check_cli()
+    elif args.cat_test:
+        run_cat_test_cli(args.cat_test, args.title)
+    elif args.daemon:
         run_daemon()
     elif args.auth:
         run_auth_cli()

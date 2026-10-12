@@ -30,7 +30,11 @@ DB_FILE = Path(os.getenv("DB_FILE", str(DB_DIR / "tube_agent.db"))).resolve()
 
 
 def get_db_connection() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_FILE)
+    conn = sqlite3.connect(DB_FILE, timeout=30.0)
+    try:
+        conn.execute("PRAGMA journal_mode=WAL")
+    except Exception:
+        pass
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -72,6 +76,30 @@ def init_db():
                 message TEXT NOT NULL,
                 video_id INTEGER,
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        # Cat Explainer Agent jobs table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS cat_jobs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email_id TEXT,
+                email_subject TEXT,
+                email_sender TEXT,
+                title TEXT,
+                source_url TEXT NOT NULL,
+                video_platform TEXT,
+                status TEXT NOT NULL DEFAULT 'detected',
+                downloaded_video_path TEXT,
+                transcription_text TEXT,
+                cat_script TEXT,
+                video_prompt TEXT,
+                generated_video_path TEXT,
+                error_message TEXT,
+                progress INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                completed_at TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
         conn.commit()
@@ -198,4 +226,78 @@ def delete_video(video_id: int):
         cursor = conn.cursor()
         cursor.execute("DELETE FROM videos WHERE id = ?", (video_id,))
         cursor.execute("DELETE FROM logs WHERE video_id = ?", (video_id,))
+        conn.commit()
+
+
+# ==========================================
+# Cat Explainer Agent DB Operations
+# ==========================================
+
+def add_cat_job(
+    source_url: str,
+    title: Optional[str] = None,
+    email_id: Optional[str] = None,
+    email_subject: Optional[str] = None,
+    email_sender: Optional[str] = None,
+    video_platform: Optional[str] = None,
+    status: str = "detected"
+) -> int:
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO cat_jobs (
+                source_url, title, email_id, email_subject, email_sender,
+                video_platform, status, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        """, (source_url, title, email_id, email_subject, email_sender, video_platform, status))
+        conn.commit()
+        return cursor.lastrowid
+
+
+def update_cat_job(job_id: int, **kwargs):
+    if not kwargs:
+        return
+    fields = []
+    values = []
+    for k, v in kwargs.items():
+        fields.append(f"{k} = ?")
+        values.append(v)
+    fields.append("updated_at = CURRENT_TIMESTAMP")
+    values.append(job_id)
+
+    query = f"UPDATE cat_jobs SET {', '.join(fields)} WHERE id = ?"
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(query, tuple(values))
+        conn.commit()
+
+
+def get_cat_job_by_id(job_id: int) -> Optional[Dict[str, Any]]:
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM cat_jobs WHERE id = ?", (job_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+def get_cat_job_by_email_id(email_id: str) -> Optional[Dict[str, Any]]:
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM cat_jobs WHERE email_id = ?", (email_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+def get_all_cat_jobs(limit: int = 100) -> List[Dict[str, Any]]:
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM cat_jobs ORDER BY id DESC LIMIT ?", (limit,))
+        rows = cursor.fetchall()
+        return [dict(row) for row in rows]
+
+
+def delete_cat_job(job_id: int):
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM cat_jobs WHERE id = ?", (job_id,))
         conn.commit()

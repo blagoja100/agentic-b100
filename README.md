@@ -55,45 +55,51 @@ pip install -r requirements.txt
 
 ## 🐳 Running with Docker (Recommended)
 
-You can run TubeAgent completely containerized while having it watch any folder on your laptop:
+You can run **TubeAgent** and **CatAgent** completely containerized while having both agents watch and save to folders on your laptop:
 
-### 1. Configure Your Laptop's Folder in [`.env`](file:///c:/Users/blago/Dev/agentic-b100/.env)
-Open [`.env`](file:///c:/Users/blago/Dev/agentic-b100/.env) and set `LOCAL_WATCH_FOLDER` to any folder on your laptop:
+### 1. Configure Your Laptop's Folders in [`.env`](file:///c:/Users/blago/Dev/agentic-b100/.env)
+Open [`.env`](file:///c:/Users/blago/Dev/agentic-b100/.env) and set your local folders:
 ```env
-# Example 1: Use a folder in your workspace (default)
-LOCAL_WATCH_FOLDER=./watch_folder
-LOCAL_PROCESSED_FOLDER=./processed_folder
+# Laptop folders:
+LOCAL_WATCH_FOLDER=C:\Users\blago\Run\watch_folder
+LOCAL_PROCESSED_FOLDER=C:\Users\blago\Run\processed_folder
+LOCAL_DATA_FOLDER=C:\Users\blago\Run\data
+LOCAL_CAT_VIDEOS_FOLDER=C:\Users\blago\Run\cat_videos
 
-# Example 2: Use your Windows Videos folder:
-# LOCAL_WATCH_FOLDER=C:/Users/blago/Videos/YouTube_Inbox
-# LOCAL_PROCESSED_FOLDER=C:/Users/blago/Videos/YouTube_Processed
-
-# Gemini API Key (optional for AI generation)
+# Gemini API Key (for multimodal understanding & Veo cat video generation)
 GEMINI_API_KEY=your_gemini_api_key_here
 ```
 
-### 2. Start the Docker Container
+### 2. Start the Docker Services
 ```bash
 docker compose up -d
 ```
-The container will build and start in the background.
+Docker Compose will launch both services in the background:
+- 🎬 `tubeagent`: Web Dashboard, YouTube uploader, folder watcher (Ports `8000`, `8088`, `8089`).
+- 🐱 `cat-agent`: Autonomous Gmail inbox monitor & 10-second cat video generator daemon.
 
 ### 3. Open the Dashboard
 Navigate to: **[http://localhost:8000](http://localhost:8000)**
 
 ### 4. Useful Docker Commands
 ```bash
-# View live container logs & watcher events
+# View live logs for both agents
 docker compose logs -f
+
+# View live logs for CatAgent specifically
+docker compose logs -f cat-agent
+
+# View live logs for TubeAgent web & folder watcher
+docker compose logs -f tubeagent
 
 # Check container status & health
 docker compose ps
 
-# Stop the container
-docker compose down
-
-# Restart container after changing .env
+# Restart containers after changing .env
 docker compose restart
+
+# Stop the containers
+docker compose down
 ```
 
 ---
@@ -137,6 +143,79 @@ agentic-b100/
 ├── watch_folder/             # Drop videos here
 ├── processed_folder/         # Completed videos are moved here
 └── client_secrets.json       # (User-provided) Google OAuth credentials
+```
+
+---
+
+## 🐱 CatAgent - Autonomous Be100 Gmail & Cat Video Generator
+
+**CatAgent** is the second autonomous AI agent in the system. It connects to your Gmail inbox via OAuth 2.0, listens for production requests, extracts video links from social platforms, and creates a 10-second video of an expressive talking cat explaining whatever was said in the video, saved directly to a local folder!
+
+### 🌟 How CatAgent Works
+
+1. 📧 **Gmail Monitor**:
+   - Searches your Gmail inbox for emails with subjects matching:
+     ```
+     Be100 Prod: [title]
+     ```
+   - Automatically extracts video links from email bodies (plain text & HTML):
+     - **Instagram**: Reels & Posts (`instagram.com/reel/...`)
+     - **Facebook**: Shorts & Reels (`facebook.com/reel/...`, `fb.watch/...`)
+     - **YouTube**: Shorts & Videos (`youtube.com/shorts/...`, `youtu.be/...`)
+   - Marks processed emails as read so they are not ingested twice.
+
+2. 🧠 **Gemini Multimodal Analysis**:
+   - Downloads the short video using `yt-dlp`.
+   - Transcribes and summarizes the core dialogue, message, and events.
+   - Generates an energetic **10-second cat explanation script** (~25 to 35 words) delivered from the perspective of a witty, charming cat.
+   - Generates a cinematic photorealistic prompt for Google Veo 2.0.
+
+3. 🎬 **10-Second Cat Video Generation (Google Veo 2.0)**:
+   - Calls Google Veo (`veo-2.0-generate-001`) via `google-genai` SDK in vertical 9:16 format.
+   - Includes an automated local Talking Cat Synthesizer (gTTS / pyttsx3 cat voiceover + cat avatar portrait + FFmpeg) fallback for instant resilience.
+
+4. 💾 **Local Folder Storage**:
+   - Saves the final generated 10-second MP4 video directly to your local folder:
+     ```
+     ./cat_videos/Be100_Cat_[Title]_[Timestamp].mp4
+     ```
+
+---
+
+### 💻 Running CatAgent
+
+#### 1. Web Dashboard (Unified UI)
+Run the web dashboard:
+```bash
+python main.py
+```
+Click on the **🐱 CatAgent (Be100 Gmail Explainer)** tab in the header. From the UI you can:
+- View live Gmail connection status.
+- Trigger an immediate inbox scan with **Check Now**.
+- Test any Instagram/Facebook/YouTube link instantly via the **Manual / Quick Video Ingestion** box.
+- Preview and play generated 10-second cat videos directly in your browser with interactive script balloons!
+- Download or delete generated videos.
+
+#### 2. Headless Terminal Daemon
+```bash
+python main.py --cat-agent
+```
+Continuously polls Gmail in the background and runs the pipeline autonomously.
+
+#### 3. Gmail OAuth Setup Wizard
+```bash
+python main.py --cat-auth
+```
+Launches your browser to grant Gmail read/modify access using your `client_secrets.json`.
+
+#### 4. Test Single Video URL (CLI)
+```bash
+python main.py --cat-test "https://www.youtube.com/shorts/YOUR_SHORT_ID" --title "Coding Tips"
+```
+
+#### 5. Check Inbox Once
+```bash
+python main.py --cat-check
 ```
 
 ---

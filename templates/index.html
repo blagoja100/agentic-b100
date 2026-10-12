@@ -52,131 +52,275 @@
 
     <!-- Main Content Container -->
     <main class="app-layout">
-        <!-- Top Status Overview Grid -->
-        <section class="overview-grid" id="statusGrid">
-            <!-- YouTube Account Card -->
-            <div class="card status-card" id="cardYouTube">
-                <div class="card-header">
-                    <span class="card-label">YouTube Account</span>
-                    <span class="badge" id="badgeYouTubeAuth">Checking...</span>
-                </div>
-                <div class="channel-profile" id="channelProfile">
-                    <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=120&q=80" alt="Avatar" class="channel-avatar" id="channelAvatar">
-                    <div class="channel-meta">
-                        <div class="channel-name" id="channelName">Not Connected</div>
-                        <div class="channel-stats" id="channelStats">Connect Google OAuth to upload</div>
-                    </div>
-                </div>
-                <button class="btn btn-primary btn-block" id="btnConnectYouTube">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15h-2v-6h2v6zm4 0h-2v-6h2v6z"/>
-                    </svg>
-                    Connect / Switch Channel
-                </button>
-            </div>
+        <!-- Main Agent Switcher Tabs -->
+        <div class="agent-tabs-container" id="agentTabsContainer">
+            <button class="agent-tab-btn active" id="tabTubeAgent" data-target="viewTubeAgent">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                </svg>
+                <span>TubeAgent (YouTube Uploader)</span>
+            </button>
+            <button class="agent-tab-btn" id="tabCatAgent" data-target="viewCatAgent">
+                <span class="tab-emoji">🐱</span>
+                <span>CatAgent (Be100 Gmail Explainer)</span>
+                <span class="badge badge-accent" id="badgeCatAgentCount">0</span>
+            </button>
+        </div>
 
-            <!-- Watcher Status Card -->
-            <div class="card status-card" id="cardWatcher">
-                <div class="card-header">
-                    <span class="card-label">Folder Watcher</span>
-                    <span class="badge badge-success" id="badgeWatcherStatus">Active</span>
-                </div>
-                <div class="folder-info">
-                    <div class="folder-path-label">Monitored Folder:</div>
-                    <div class="folder-path-box" id="watchFolderPath" title="Click to copy">
-                        Loading folder...
+        <!-- VIEW 1: TubeAgent View -->
+        <div id="viewTubeAgent" class="agent-view active">
+            <!-- Top Status Overview Grid -->
+            <section class="overview-grid" id="statusGrid">
+                <!-- YouTube Account Card -->
+                <div class="card status-card" id="cardYouTube">
+                    <div class="card-header">
+                        <span class="card-label">YouTube Account</span>
+                        <span class="badge" id="badgeYouTubeAuth">Checking...</span>
                     </div>
-                    <div class="folder-hint">Drop video files into this directory or use the dropzone below.</div>
-                </div>
-                <div class="mini-stats">
-                    <div class="stat-item">
-                        <div class="stat-number" id="statPending">0</div>
-                        <div class="stat-label">In Queue</div>
+                    <div class="channel-profile" id="channelProfile">
+                        <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=120&q=80" alt="Avatar" class="channel-avatar" id="channelAvatar">
+                        <div class="channel-meta">
+                            <div class="channel-name" id="channelName">Not Connected</div>
+                            <div class="channel-stats" id="channelStats">Connect Google OAuth to upload</div>
+                        </div>
                     </div>
-                    <div class="stat-item">
-                        <div class="stat-number" id="statUploaded">0</div>
-                        <div class="stat-label">Uploaded</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number" id="statTotal">0</div>
-                        <div class="stat-label">Total Jobs</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Gemini AI Intelligence Card -->
-            <div class="card status-card" id="cardGemini">
-                <div class="card-header">
-                    <span class="card-label">Gemini AI Engine</span>
-                    <span class="badge" id="badgeGeminiStatus">Checking...</span>
-                </div>
-                <div class="ai-feature-list">
-                    <div class="ai-feature-item">
-                        <span class="check-icon">✓</span>
-                        <span>Video Multimodal Analysis</span>
-                    </div>
-                    <div class="ai-feature-item">
-                        <span class="check-icon">✓</span>
-                        <span>High-CTR Title Generation</span>
-                    </div>
-                    <div class="ai-feature-item">
-                        <span class="check-icon">✓</span>
-                        <span>SEO Description & Tags</span>
-                    </div>
-                </div>
-                <div class="model-badge-box">
-                    <span class="model-badge" id="geminiModelName">gemini-2.5-flash</span>
-                    <span class="privacy-badge" id="defaultPrivacyBadge">Privacy: Private</span>
-                </div>
-            </div>
-        </section>
-
-        <!-- Dropzone Section -->
-        <section class="dropzone-section" id="dropzoneSection">
-            <div class="dropzone" id="fileDropzone">
-                <input type="file" id="fileInput" accept="video/*" style="display: none;">
-                <div class="dropzone-content">
-                    <div class="dropzone-icon">
-                        <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.8">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                            <polyline points="17 8 12 3 7 8"/>
-                            <line x1="12" y1="3" x2="12" y2="15"/>
+                    <button class="btn btn-primary btn-block" id="btnConnectYouTube">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15h-2v-6h2v6zm4 0h-2v-6h2v6z"/>
                         </svg>
+                        Connect / Switch Channel
+                    </button>
+                </div>
+
+                <!-- Watcher Status Card -->
+                <div class="card status-card" id="cardWatcher">
+                    <div class="card-header">
+                        <span class="card-label">Folder Watcher</span>
+                        <span class="badge badge-success" id="badgeWatcherStatus">Active</span>
                     </div>
-                    <h3 class="dropzone-title">Drop video files here to process</h3>
-                    <p class="dropzone-subtitle">Or browse your computer &bull; Supported: MP4, MOV, MKV, AVI, WEBM</p>
+                    <div class="folder-info">
+                        <div class="folder-path-label">Monitored Folder:</div>
+                        <div class="folder-path-box" id="watchFolderPath" title="Click to copy">
+                            Loading folder...
+                        </div>
+                        <div class="folder-hint">Drop video files into this directory or use the dropzone below.</div>
+                    </div>
+                    <div class="mini-stats">
+                        <div class="stat-item">
+                            <div class="stat-number" id="statPending">0</div>
+                            <div class="stat-label">In Queue</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number" id="statUploaded">0</div>
+                            <div class="stat-label">Uploaded</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number" id="statTotal">0</div>
+                            <div class="stat-label">Total Jobs</div>
+                        </div>
+                    </div>
                 </div>
-                <div class="dropzone-progress" id="dropzoneProgress" style="display: none;">
-                    <div class="progress-bar-fill" id="dropzoneProgressBar"></div>
-                    <span id="dropzoneProgressText">Uploading 0%...</span>
-                </div>
-            </div>
-        </section>
 
-        <!-- Main Video Queue Section -->
-        <section class="videos-section" id="videosSection">
-            <div class="section-header">
-                <div>
-                    <h2 class="section-title">Video Pipeline & Queue</h2>
-                    <p class="section-subtitle">Real-time detection, AI optimization, and YouTube upload status</p>
+                <!-- Gemini AI Intelligence Card -->
+                <div class="card status-card" id="cardGemini">
+                    <div class="card-header">
+                        <span class="card-label">Gemini AI Engine</span>
+                        <span class="badge" id="badgeGeminiStatus">Checking...</span>
+                    </div>
+                    <div class="ai-feature-list">
+                        <div class="ai-feature-item">
+                            <span class="check-icon">✓</span>
+                            <span>Video Multimodal Analysis</span>
+                        </div>
+                        <div class="ai-feature-item">
+                            <span class="check-icon">✓</span>
+                            <span>High-CTR Title Generation</span>
+                        </div>
+                        <div class="ai-feature-item">
+                            <span class="check-icon">✓</span>
+                            <span>SEO Description & Tags</span>
+                        </div>
+                    </div>
+                    <div class="model-badge-box">
+                        <span class="model-badge" id="geminiModelName">gemini-2.5-flash</span>
+                        <span class="privacy-badge" id="defaultPrivacyBadge">Privacy: Private</span>
+                    </div>
                 </div>
-                <div class="filter-controls">
-                    <button class="filter-btn active" data-filter="all">All</button>
-                    <button class="filter-btn" data-filter="review_ready">Needs Review</button>
-                    <button class="filter-btn" data-filter="uploading">Uploading</button>
-                    <button class="filter-btn" data-filter="uploaded">Completed</button>
-                </div>
-            </div>
+            </section>
 
-            <div class="video-list-container" id="videoListContainer">
-                <!-- Dynamically populated or empty state -->
-                <div class="empty-state" id="emptyState">
-                    <div class="empty-state-icon">🎬</div>
-                    <h3 class="empty-state-title">No videos in pipeline yet</h3>
-                    <p class="empty-state-subtitle">Drop a video into the watch folder or drag one above to see the AI agent in action.</p>
+            <!-- Dropzone Section -->
+            <section class="dropzone-section" id="dropzoneSection">
+                <div class="dropzone" id="fileDropzone">
+                    <input type="file" id="fileInput" accept="video/*" style="display: none;">
+                    <div class="dropzone-content">
+                        <div class="dropzone-icon">
+                            <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.8">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="17 8 12 3 7 8"/>
+                                <line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                        </div>
+                        <h3 class="dropzone-title">Drop video files here to process</h3>
+                        <p class="dropzone-subtitle">Or browse your computer &bull; Supported: MP4, MOV, MKV, AVI, WEBM</p>
+                    </div>
+                    <div class="dropzone-progress" id="dropzoneProgress" style="display: none;">
+                        <div class="progress-bar-fill" id="dropzoneProgressBar"></div>
+                        <span id="dropzoneProgressText">Uploading 0%...</span>
+                    </div>
                 </div>
-            </div>
-        </section>
+            </section>
+
+            <!-- Main Video Queue Section -->
+            <section class="videos-section" id="videosSection">
+                <div class="section-header">
+                    <div>
+                        <h2 class="section-title">Video Pipeline & Queue</h2>
+                        <p class="section-subtitle">Real-time detection, AI optimization, and YouTube upload status</p>
+                    </div>
+                    <div class="filter-controls">
+                        <button class="filter-btn active" data-filter="all">All</button>
+                        <button class="filter-btn" data-filter="review_ready">Needs Review</button>
+                        <button class="filter-btn" data-filter="uploading">Uploading</button>
+                        <button class="filter-btn" data-filter="uploaded">Completed</button>
+                    </div>
+                </div>
+
+                <div class="video-list-container" id="videoListContainer">
+                    <div class="empty-state" id="emptyState">
+                        <div class="empty-state-icon">🎬</div>
+                        <h3 class="empty-state-title">No videos in pipeline yet</h3>
+                        <p class="empty-state-subtitle">Drop a video into the watch folder or drag one above to see the AI agent in action.</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- VIEW 2: CatAgent View -->
+        <div id="viewCatAgent" class="agent-view" style="display: none;">
+            <!-- Cat Agent Overview Grid -->
+            <section class="overview-grid" id="catStatusGrid">
+                <!-- Gmail Inbox Status Card -->
+                <div class="card status-card" id="cardGmail">
+                    <div class="card-header">
+                        <span class="card-label">Gmail Inbox Monitor</span>
+                        <span class="badge" id="badgeGmailStatus">Checking...</span>
+                    </div>
+                    <div class="folder-info">
+                        <div class="folder-path-label">Monitored Subject:</div>
+                        <div class="folder-path-box" id="catSubjectPrefix">Be100 Prod: [title]</div>
+                        <div class="channel-meta" style="margin-top: 10px;">
+                            <div class="channel-name" id="gmailAccountEmail">Not Connected</div>
+                            <div class="channel-stats" id="gmailPollStats">Scans inbox every 30s</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px; margin-top: 14px;">
+                        <button class="btn btn-primary" id="btnCheckGmailNow" style="flex: 1;">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                                <path d="M3 3v5h5"/>
+                                <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+                                <path d="M16 21h5v-5"/>
+                            </svg>
+                            Check Now
+                        </button>
+                        <a href="/api/cat/auth/redirect" target="_blank" class="btn btn-secondary" id="btnConnectGmail" title="Authorize Gmail Account" style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center;">
+                            🔑 Connect
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Google Veo Engine Card -->
+                <div class="card status-card" id="cardVeo">
+                    <div class="card-header">
+                        <span class="card-label">Cat Video Engine</span>
+                        <span class="badge badge-accent" id="badgeVeoModel">Veo 2.0</span>
+                    </div>
+                    <div class="ai-feature-list">
+                        <div class="ai-feature-item">
+                            <span class="check-icon">✓</span>
+                            <span>10-Second Explainer Generation</span>
+                        </div>
+                        <div class="ai-feature-item">
+                            <span class="check-icon">✓</span>
+                            <span>Vertical 9:16 Shorts / Reels Format</span>
+                        </div>
+                        <div class="ai-feature-item">
+                            <span class="check-icon">✓</span>
+                            <span>Dialogue Extraction & Cat Scripting</span>
+                        </div>
+                    </div>
+                    <div class="model-badge-box">
+                        <span class="model-badge" id="catVeoModelName">veo-2.0-generate-001</span>
+                        <span class="privacy-badge">Duration: 10s</span>
+                    </div>
+                </div>
+
+                <!-- Local Storage Card -->
+                <div class="card status-card" id="cardCatStorage">
+                    <div class="card-header">
+                        <span class="card-label">Local Video Storage</span>
+                        <span class="badge badge-success">Local Folder</span>
+                    </div>
+                    <div class="folder-info">
+                        <div class="folder-path-label">Destination Folder:</div>
+                        <div class="folder-path-box" id="catVideosFolderPath" title="Click to copy">
+                            ./cat_videos
+                        </div>
+                        <div class="folder-hint">Generated 10-second cat videos are saved here automatically.</div>
+                    </div>
+                    <div class="mini-stats">
+                        <div class="stat-item">
+                            <div class="stat-number" id="catStatActive">0</div>
+                            <div class="stat-label">Active</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number" id="catStatCompleted">0</div>
+                            <div class="stat-label">Generated</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number" id="catStatTotal">0</div>
+                            <div class="stat-label">Total Jobs</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Direct Video Link Ingestion Box -->
+            <section class="card direct-cat-box" id="directCatBox">
+                <div class="card-header">
+                    <div>
+                        <h3 style="font-size: 1.1rem; font-weight: 600;">Manual / Quick Video Ingestion</h3>
+                        <p style="color: var(--text-secondary); font-size: 0.85rem;">Test a link immediately without waiting for an email</p>
+                    </div>
+                    <span class="badge badge-info">Instagram &bull; Facebook &bull; YouTube Shorts</span>
+                </div>
+                <div class="direct-input-row" style="display: flex; gap: 12px; margin-top: 14px; flex-wrap: wrap;">
+                    <input type="text" id="catDirectUrl" class="form-control" style="flex: 2; min-width: 280px;" placeholder="Paste video link (Instagram Reel, Facebook Short, YouTube Short)...">
+                    <input type="text" id="catDirectTitle" class="form-control" style="flex: 1; min-width: 180px;" placeholder="Optional title...">
+                    <button class="btn btn-primary" id="btnCatDirectSubmit" style="white-space: nowrap;">
+                        🐱 Generate Cat Video
+                    </button>
+                </div>
+            </section>
+
+            <!-- Cat Videos Showcase & Queue -->
+            <section class="videos-section" id="catVideosSection">
+                <div class="section-header">
+                    <div>
+                        <h2 class="section-title">Cat Explainer Videos</h2>
+                        <p class="section-subtitle">10-second videos of cats explaining incoming production video links</p>
+                    </div>
+                </div>
+
+                <div class="cat-jobs-container" id="catJobsListContainer">
+                    <div class="empty-state" id="catEmptyState">
+                        <div class="empty-state-icon">🐱</div>
+                        <h3 class="empty-state-title">No cat explainer videos yet</h3>
+                        <p class="empty-state-subtitle">Send an email with subject <code>Be100 Prod: [title]</code> or paste a video link above.</p>
+                    </div>
+                </div>
+            </section>
+        </div>
 
         <!-- Live Agent Activity Log Console -->
         <section class="logs-section" id="logsSection">
@@ -295,12 +439,12 @@
                         <div class="step-desc">
                             <strong>Sign In With YouTube:</strong>
                             <p>Click below to open the official Google authentication consent screen in your browser and authorize your channel.</p>
-                            <button class="btn btn-primary" id="btnTriggerOAuth">
+                            <a href="/api/auth/redirect" target="_blank" class="btn btn-primary" id="btnTriggerOAuth" style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
                                 <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
                                     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15h-2v-6h2v6zm4 0h-2v-6h2v6z"/>
                                 </svg>
                                 Launch YouTube OAuth Sign-In
-                            </button>
+                            </a>
                             <div id="authStatusAlert" class="auth-alert" style="display: none;"></div>
                         </div>
                     </div>
@@ -361,6 +505,31 @@
                         <span class="switch-text">Auto-Upload Mode (Upload immediately without requiring manual approval)</span>
                     </label>
                 </div>
+
+                <hr style="border: 0; border-top: 1px solid var(--border-subtle); margin: 20px 0;">
+                <h4 style="font-size: 0.95rem; font-weight: 600; margin-bottom: 12px; color: #a78bfa;">🐱 Cat Explainer Agent Settings</h4>
+                <div class="form-group">
+                    <label for="settingCatVideosFolder">Cat Videos Output Folder</label>
+                    <input type="text" id="settingCatVideosFolder" class="form-control">
+                    <small class="form-hint">Local directory where generated 10-second cat videos are saved.</small>
+                </div>
+                <div class="form-row">
+                    <div class="form-group col-6">
+                        <label for="settingGmailSubjectPrefix">Gmail Subject Prefix</label>
+                        <input type="text" id="settingGmailSubjectPrefix" class="form-control" placeholder="Be100 Prod:">
+                    </div>
+                    <div class="form-group col-6">
+                        <label for="settingGmailPollInterval">Poll Interval (Seconds)</label>
+                        <input type="number" id="settingGmailPollInterval" class="form-control" min="5" value="30">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="settingVeoModel">Google Veo Video Model</label>
+                    <select id="settingVeoModel" class="form-control">
+                        <option value="veo-2.0-generate-001">veo-2.0-generate-001 (Recommended)</option>
+                        <option value="veo-2.0-generate-video-preview">veo-2.0-generate-video-preview</option>
+                    </select>
+                </div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" id="btnCancelSettings">Cancel</button>
@@ -372,6 +541,6 @@
     <!-- Notification Toast -->
     <div id="toastContainer" class="toast-container"></div>
 
-    <script src="/static/js/app.js"></script>
+    <script src="/static/js/app.js?v=20261012_04"></script>
 </body>
 </html>

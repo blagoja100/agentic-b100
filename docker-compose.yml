@@ -8,6 +8,7 @@ services:
     ports:
       - "127.0.0.1:8000:8000" # TubeAgent Web Dashboard & API
       - "127.0.0.1:8088:8088" # YouTube OAuth browser authorization redirect
+      - "127.0.0.1:8089:8089" # Gmail OAuth browser authorization redirect
     env_file:
       - path: .env
         required: false
@@ -18,13 +19,46 @@ services:
       - WATCH_FOLDER=/app/watch_folder
       - PROCESSED_FOLDER=/app/processed_folder
       - DATA_DIR=/app/data
+      - CAT_VIDEOS_FOLDER=/app/cat_videos
+      - GMAIL_TOKEN_FILE=/app/data/gmail_token.json
+      - ENABLE_CAT_POLLER_IN_WEB=false # Dedicated cat-agent container handles background polling
       - OAUTH_BIND_ADDR=0.0.0.0
       - OAUTH_HOST=localhost
     volumes:
       # Mount your laptop's local folders into the container:
-      # Change LOCAL_WATCH_FOLDER in .env or set below to any local path on your laptop!
       - "${LOCAL_WATCH_FOLDER:-./watch_folder}:/app/watch_folder"
       - "${LOCAL_PROCESSED_FOLDER:-./processed_folder}:/app/processed_folder"
-
+      - "${LOCAL_CAT_VIDEOS_FOLDER:-./cat_videos}:/app/cat_videos"
       # Persistent storage for SQLite database, upload history, and OAuth tokens
       - "${LOCAL_DATA_FOLDER:-./data}:/app/data"
+
+  cat-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cat-agent
+    restart: unless-stopped
+    command: ["python", "main.py", "--cat-agent"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DATA_DIR=/app/data
+      - CAT_VIDEOS_FOLDER=/app/cat_videos
+      - GMAIL_TOKEN_FILE=/app/data/gmail_token.json
+      - OAUTH_BIND_ADDR=0.0.0.0
+      - OAUTH_HOST=localhost
+    volumes:
+      # Store generated 10-second cat videos directly on your laptop
+      - "${LOCAL_CAT_VIDEOS_FOLDER:-./cat_videos}:/app/cat_videos"
+      # Shared persistent data (SQLite database, Gmail tokens, client_secrets)
+      - "${LOCAL_DATA_FOLDER:-./data}:/app/data"
+    depends_on:
+      tubeagent:
+        condition: service_healthy

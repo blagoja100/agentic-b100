@@ -83,6 +83,37 @@ document.addEventListener("DOMContentLoaded", () => {
     const settingDefaultPrivacy = document.getElementById("settingDefaultPrivacy");
     const settingAutoUpload = document.getElementById("settingAutoUpload");
 
+    // CatAgent Elements
+    const tabTubeAgent = document.getElementById("tabTubeAgent");
+    const tabCatAgent = document.getElementById("tabCatAgent");
+    const viewTubeAgent = document.getElementById("viewTubeAgent");
+    const viewCatAgent = document.getElementById("viewCatAgent");
+    const badgeCatAgentCount = document.getElementById("badgeCatAgentCount");
+
+    const badgeGmailStatus = document.getElementById("badgeGmailStatus");
+    const gmailAccountEmail = document.getElementById("gmailAccountEmail");
+    const gmailPollStats = document.getElementById("gmailPollStats");
+    const catSubjectPrefix = document.getElementById("catSubjectPrefix");
+    const btnCheckGmailNow = document.getElementById("btnCheckGmailNow");
+    const btnConnectGmail = document.getElementById("btnConnectGmail");
+
+    const catVeoModelName = document.getElementById("catVeoModelName");
+    const catVideosFolderPath = document.getElementById("catVideosFolderPath");
+    const catStatActive = document.getElementById("catStatActive");
+    const catStatCompleted = document.getElementById("catStatCompleted");
+    const catStatTotal = document.getElementById("catStatTotal");
+
+    const catDirectUrl = document.getElementById("catDirectUrl");
+    const catDirectTitle = document.getElementById("catDirectTitle");
+    const btnCatDirectSubmit = document.getElementById("btnCatDirectSubmit");
+    const catJobsListContainer = document.getElementById("catJobsListContainer");
+    const catEmptyState = document.getElementById("catEmptyState");
+
+    const settingCatVideosFolder = document.getElementById("settingCatVideosFolder");
+    const settingGmailSubjectPrefix = document.getElementById("settingGmailSubjectPrefix");
+    const settingGmailPollInterval = document.getElementById("settingGmailPollInterval");
+    const settingVeoModel = document.getElementById("settingVeoModel");
+
     // Filter Buttons
     const filterButtons = document.querySelectorAll(".filter-btn");
 
@@ -632,22 +663,16 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     };
 
-    btnTriggerOAuth.onclick = async () => {
-        try {
-            authStatusAlert.style.display = "block";
-            authStatusAlert.className = "auth-alert";
-            authStatusAlert.innerHTML = "⏳ Opening browser authorization window... Please sign in with your Google Account and allow YouTube Upload permission.";
-
-            const res = await fetch("/api/auth/start", { method: "POST" });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.detail || "Failed to start OAuth");
-            showToast("Google sign-in window launched", "info");
-        } catch (err) {
-            authStatusAlert.style.display = "block";
-            authStatusAlert.className = "auth-alert badge-danger";
-            authStatusAlert.textContent = `Error: ${err.message}`;
-            showToast(err.message, "error");
-        }
+    btnTriggerOAuth.onclick = () => {
+        authStatusAlert.style.display = "block";
+        authStatusAlert.className = "auth-alert";
+        authStatusAlert.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+                <span>⏳ Google Account authorization opened in a new tab. Please sign in and approve permissions.</span>
+                <a href="/api/auth/redirect" target="_blank" class="btn btn-sm btn-primary" style="text-decoration:none;">Re-open Sign-in</a>
+            </div>
+        `;
+        showToast("Opening Google Sign-in in a new tab...", "info");
     };
 
     // --- Settings Modal ---
@@ -661,6 +686,10 @@ document.addEventListener("DOMContentLoaded", () => {
             settingGeminiApiKey.value = data.gemini_api_key;
             settingGeminiModel.value = data.gemini_model;
             settingAutoUpload.checked = data.auto_upload;
+            if (settingCatVideosFolder) settingCatVideosFolder.value = data.cat_videos_folder || "./cat_videos";
+            if (settingGmailSubjectPrefix) settingGmailSubjectPrefix.value = data.gmail_subject_prefix || "Be100 Prod:";
+            if (settingGmailPollInterval) settingGmailPollInterval.value = data.gmail_poll_interval || 30;
+            if (settingVeoModel) settingVeoModel.value = data.veo_model || "veo-2.0-generate-001";
             settingsModal.style.display = "flex";
         } catch (err) {
             showToast("Failed to load settings", "error");
@@ -677,7 +706,11 @@ document.addEventListener("DOMContentLoaded", () => {
             default_privacy: settingDefaultPrivacy.value,
             gemini_api_key: settingGeminiApiKey.value.trim(),
             gemini_model: settingGeminiModel.value,
-            auto_upload: settingAutoUpload.checked
+            auto_upload: settingAutoUpload.checked,
+            cat_videos_folder: settingCatVideosFolder ? settingCatVideosFolder.value.trim() : "./cat_videos",
+            gmail_subject_prefix: settingGmailSubjectPrefix ? settingGmailSubjectPrefix.value.trim() : "Be100 Prod:",
+            gmail_poll_interval: settingGmailPollInterval ? parseInt(settingGmailPollInterval.value) || 30 : 30,
+            veo_model: settingVeoModel ? settingVeoModel.value : "veo-2.0-generate-001"
         };
 
         try {
@@ -690,6 +723,7 @@ document.addEventListener("DOMContentLoaded", () => {
             showToast("Settings updated successfully!", "success");
             settingsModal.style.display = "none";
             loadStatus();
+            loadCatStatus();
         } catch (err) {
             showToast(err.message, "error");
         }
@@ -778,6 +812,14 @@ document.addEventListener("DOMContentLoaded", () => {
             authModal.style.display = "none";
         } else if (eventType === "auth_error") {
             showToast(`YouTube auth failed: ${data.error}`, "error");
+        } else if (eventType && eventType.startsWith("cat_job_")) {
+            loadCatJobs();
+            loadCatStatus();
+            if (eventType === "cat_job_completed") {
+                showToast(`Cat Explainer Video created for: ${data.title}!`, "success");
+            } else if (eventType === "cat_job_created") {
+                showToast(`New Cat Job: ${data.title}`, "info");
+            }
         }
 
         // Live log events
@@ -785,6 +827,270 @@ document.addEventListener("DOMContentLoaded", () => {
             appendLogEntry(msg);
             scrollTerminalBottom();
         }
+    }
+
+    // --- Navigation Tabs Switcher ---
+    if (tabTubeAgent && tabCatAgent) {
+        tabTubeAgent.onclick = () => {
+            tabTubeAgent.classList.add("active");
+            tabCatAgent.classList.remove("active");
+            if (viewTubeAgent) viewTubeAgent.style.display = "block";
+            if (viewCatAgent) viewCatAgent.style.display = "none";
+        };
+        tabCatAgent.onclick = () => {
+            tabCatAgent.classList.add("active");
+            tabTubeAgent.classList.remove("active");
+            if (viewCatAgent) viewCatAgent.style.display = "block";
+            if (viewTubeAgent) viewTubeAgent.style.display = "none";
+            loadCatStatus();
+            loadCatJobs();
+        };
+    }
+
+    // --- CatAgent Status & Jobs Loader ---
+    async function loadCatStatus() {
+        try {
+            const res = await fetch("/api/cat/status");
+            const data = await res.json();
+
+            if (badgeGmailStatus) {
+                if (data.gmail_authenticated) {
+                    badgeGmailStatus.className = "badge badge-success";
+                    badgeGmailStatus.textContent = "Connected ✓";
+                } else {
+                    badgeGmailStatus.className = "badge badge-warning";
+                    badgeGmailStatus.textContent = "Auth Needed";
+                }
+            }
+
+            if (gmailAccountEmail) {
+                gmailAccountEmail.textContent = data.gmail_email || "Not Connected";
+            }
+            if (gmailPollStats) {
+                gmailPollStats.textContent = `Scans inbox every ${data.poll_interval || 30}s`;
+            }
+            if (catSubjectPrefix) {
+                catSubjectPrefix.textContent = `${data.subject_prefix} [title]`;
+            }
+            if (catVeoModelName) {
+                catVeoModelName.textContent = data.veo_model;
+            }
+            if (catVideosFolderPath) {
+                catVideosFolderPath.textContent = data.cat_videos_folder;
+            }
+
+            if (catStatActive && data.stats) catStatActive.textContent = data.stats.active;
+            if (catStatCompleted && data.stats) catStatCompleted.textContent = data.stats.completed;
+            if (catStatTotal && data.stats) catStatTotal.textContent = data.stats.total;
+            if (badgeCatAgentCount && data.stats) badgeCatAgentCount.textContent = data.stats.total;
+
+        } catch (err) {
+            console.error("Failed to load Cat Agent status:", err);
+        }
+    }
+
+    async function loadCatJobs() {
+        try {
+            const res = await fetch("/api/cat/jobs");
+            const jobs = await res.json();
+            renderCatJobs(jobs);
+        } catch (err) {
+            console.error("Failed to load cat jobs:", err);
+        }
+    }
+
+    function renderCatJobs(jobs) {
+        if (!catJobsListContainer) return;
+        catJobsListContainer.innerHTML = "";
+
+        if (!jobs || jobs.length === 0) {
+            if (catEmptyState) catJobsListContainer.appendChild(catEmptyState);
+            return;
+        }
+
+        jobs.forEach(job => {
+            const card = document.createElement("div");
+            card.className = "cat-job-card";
+            card.id = `catJobCard-${job.id}`;
+
+            let platformClass = "platform-web";
+            let platformLabel = "Web";
+            const plat = (job.video_platform || "").toLowerCase();
+            if (plat.includes("instagram")) { platformClass = "platform-instagram"; platformLabel = "Instagram"; }
+            else if (plat.includes("facebook")) { platformClass = "platform-facebook"; platformLabel = "Facebook"; }
+            else if (plat.includes("youtube")) { platformClass = "platform-youtube"; platformLabel = "YouTube"; }
+
+            let statusBadge = "badge-info";
+            let statusText = job.status;
+            if (job.status === "completed") { statusBadge = "badge-success"; statusText = "Ready 10s Video"; }
+            else if (job.status === "failed") { statusBadge = "badge-danger"; statusText = "Failed"; }
+            else if (job.status === "generating_video") { statusBadge = "badge-accent"; statusText = "Rendering Veo Video..."; }
+            else if (job.status === "transcribing") { statusBadge = "badge-warning"; statusText = "Writing Cat Script..."; }
+            else if (job.status === "downloading") { statusBadge = "badge-info"; statusText = "Downloading Link..."; }
+
+            let videoHtml = "";
+            if (job.status === "completed" && job.generated_video_path) {
+                videoHtml = `
+                    <div class="cat-video-player-container">
+                        <video class="cat-video-player" src="/api/cat/video/${job.id}" controls preload="metadata"></video>
+                    </div>
+                `;
+            }
+
+            let scriptHtml = "";
+            if (job.cat_script) {
+                scriptHtml = `
+                    <div class="cat-script-balloon">
+                        <div class="cat-script-balloon-header">
+                            <span>🐱</span> What the Cat Said (10s Monologue)
+                        </div>
+                        <div class="cat-script-text">"${escapeHtml(job.cat_script)}"</div>
+                    </div>
+                `;
+            }
+
+            let progressHtml = "";
+            if (job.status !== "completed" && job.status !== "failed") {
+                progressHtml = `
+                    <div class="cat-progress-box">
+                        <div class="progress-bar-container" style="height: 6px; background: rgba(255,255,255,0.08); border-radius: 99px; overflow: hidden;">
+                            <div class="progress-bar-fill" style="width: ${job.progress || 20}%; height: 100%; background: var(--indigo-gradient); transition: width 0.3s ease;"></div>
+                        </div>
+                        <small style="color: var(--text-muted); font-size: 0.75rem; margin-top: 4px; display: block;">
+                            ${escapeHtml(statusText)} (${job.progress || 0}%)
+                        </small>
+                    </div>
+                `;
+            }
+
+            let errorHtml = "";
+            if (job.error_message) {
+                errorHtml = `
+                    <div class="alert alert-danger" style="margin-top: 8px; font-size: 0.8rem; padding: 8px 12px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; color: #f87171;">
+                        ${escapeHtml(job.error_message)}
+                    </div>
+                `;
+            }
+
+            card.innerHTML = `
+                <div class="cat-job-header">
+                    <div>
+                        <div class="cat-job-title">${escapeHtml(job.title || "Be100 Cat Explainer")}</div>
+                        <div class="cat-job-meta" style="margin-top: 4px;">
+                            <a href="${escapeHtml(job.source_url)}" target="_blank" class="platform-pill ${platformClass}">
+                                ${platformLabel} ↗
+                            </a>
+                            <span>&bull;</span>
+                            <span>${job.created_at ? job.created_at.split(' ')[0] : ''}</span>
+                        </div>
+                    </div>
+                    <span class="badge ${statusBadge}">${escapeHtml(statusText)}</span>
+                </div>
+
+                ${videoHtml}
+                ${progressHtml}
+                ${scriptHtml}
+                ${errorHtml}
+
+                <div class="cat-job-actions">
+                    <button class="btn btn-sm btn-ghost btn-delete-cat" data-id="${job.id}" title="Delete video job">
+                        🗑️ Delete
+                    </button>
+                    ${job.status === "completed" ? `
+                        <a href="/api/cat/video/${job.id}" download class="btn btn-sm btn-primary">
+                            ⬇️ Download 10s MP4
+                        </a>
+                    ` : ''}
+                </div>
+            `;
+
+            const btnDel = card.querySelector(".btn-delete-cat");
+            if (btnDel) {
+                btnDel.onclick = async () => {
+                    if (!confirm(`Delete cat video job #${job.id}?`)) return;
+                    try {
+                        const res = await fetch(`/api/cat/jobs/${job.id}`, { method: "DELETE" });
+                        if (res.ok) {
+                            showToast("Cat job deleted", "info");
+                            loadCatJobs();
+                            loadCatStatus();
+                        }
+                    } catch (err) {
+                        showToast("Failed to delete", "error");
+                    }
+                };
+            }
+
+            catJobsListContainer.appendChild(card);
+        });
+    }
+
+    // --- CatAgent Action Buttons ---
+    if (btnCheckGmailNow) {
+        btnCheckGmailNow.onclick = async () => {
+            btnCheckGmailNow.disabled = true;
+            btnCheckGmailNow.textContent = "Checking...";
+            try {
+                const res = await fetch("/api/cat/check-now", { method: "POST" });
+                const data = await res.json();
+                showToast(`Inbox checked! Found ${data.jobs_found || 0} matching Be100 emails.`, "success");
+                loadCatJobs();
+                loadCatStatus();
+            } catch (err) {
+                showToast("Failed to check Gmail", "error");
+            } finally {
+                btnCheckGmailNow.disabled = false;
+                btnCheckGmailNow.innerHTML = `
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                        <path d="M3 3v5h5"/>
+                        <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+                        <path d="M16 21h5v-5"/>
+                    </svg> Check Now
+                `;
+            }
+        };
+    }
+
+    if (btnConnectGmail) {
+        btnConnectGmail.onclick = () => {
+            showToast("Opening Google Sign-in in a new tab... Select your Gmail account.", "info");
+        };
+    }
+
+    if (btnCatDirectSubmit) {
+        btnCatDirectSubmit.onclick = async () => {
+            const url = catDirectUrl.value.trim();
+            const title = catDirectTitle.value.trim();
+            if (!url) {
+                showToast("Please paste a video URL first!", "warning");
+                return;
+            }
+
+            btnCatDirectSubmit.disabled = true;
+            btnCatDirectSubmit.textContent = "Launching...";
+
+            try {
+                const res = await fetch("/api/cat/process-url", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ url, title })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || "Failed to start cat job");
+
+                showToast(`Cat Video Job #${data.job_id} launched!`, "success");
+                catDirectUrl.value = "";
+                catDirectTitle.value = "";
+                loadCatJobs();
+                loadCatStatus();
+            } catch (err) {
+                showToast(err.message, "error");
+            } finally {
+                btnCatDirectSubmit.disabled = false;
+                btnCatDirectSubmit.textContent = "🐱 Generate Cat Video";
+            }
+        };
     }
 
     function escapeHtml(str) {
@@ -800,6 +1106,8 @@ document.addEventListener("DOMContentLoaded", () => {
     // Bootstrap
     loadStatus();
     loadVideos();
+    loadCatStatus();
+    loadCatJobs();
     loadLogs();
     connectWebSocket();
 
@@ -807,5 +1115,7 @@ document.addEventListener("DOMContentLoaded", () => {
     setInterval(() => {
         loadStatus();
         loadVideos();
+        loadCatStatus();
+        loadCatJobs();
     }, 10000);
 });

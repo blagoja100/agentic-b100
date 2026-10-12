@@ -9,15 +9,18 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     WATCH_FOLDER=/app/watch_folder \
     PROCESSED_FOLDER=/app/processed_folder \
     DATA_DIR=/app/data \
+    CAT_VIDEOS_FOLDER=/app/cat_videos \
+    GMAIL_TOKEN_FILE=/app/data/gmail_token.json \
     OAUTH_BIND_ADDR=0.0.0.0 \
     OAUTH_HOST=localhost
 
 WORKDIR /app
 
-# Install system dependencies (curl for healthchecks, ca-certificates for TLS)
+# Install system dependencies (curl for healthchecks, ca-certificates for TLS, ffmpeg for media pipelines)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies first for caching
@@ -27,11 +30,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application source code
 COPY . .
 
-# Create target directories for persistent data and video folders
-RUN mkdir -p /app/data /app/watch_folder /app/processed_folder /app/failed_folder
+# Create target directories for persistent data, videos, and CatAgent outputs
+RUN mkdir -p /app/data /app/watch_folder /app/processed_folder /app/failed_folder /app/cat_videos /app/cat_agent/temp
 
-# Expose Web Dashboard (8000) and OAuth callback port (8088)
-EXPOSE 8000 8088
+# Expose Web Dashboard (8000), YouTube OAuth (8088), and Gmail OAuth (8089)
+EXPOSE 8000 8088 8089
 
 # Healthcheck to verify FastAPI web dashboard is healthy
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \

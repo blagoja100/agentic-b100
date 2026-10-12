@@ -33,6 +33,9 @@ processed_folder/*
 !processed_folder/.gitkeep
 failed_folder/*
 !failed_folder/.gitkeep
+cat_videos/*
+!cat_videos/.gitkeep
+cat_agent/temp/
 *.mp4
 *.mov
 *.mkv

@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, UploadFile, File, Form
-from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -22,10 +22,16 @@ from db import (
     delete_video,
     update_video_metadata,
     get_recent_logs,
-    log_event
+    log_event,
+    get_all_cat_jobs,
+    get_cat_job_by_id,
+    delete_cat_job
 )
 from agent import agent_instance
 from watcher import FolderWatcher
+from cat_agent import cat_agent_instance
+from cat_agent import gmail_monitor
+from cat_agent.gmail_monitor import is_gmail_authenticated, run_gmail_oauth_flow, GMAIL_SCOPES
 import youtube_uploader
 import ai_generator
 
@@ -86,18 +92,26 @@ def broadcast_agent_event(event_data: dict):
 
 
 agent_instance.events.subscribe(broadcast_agent_event)
+cat_agent_instance.events.subscribe(broadcast_agent_event)
 
 
 @app.on_event("startup")
 async def startup_event():
     Config.ensure_directories()
     watcher_instance.start()
-    log_event("SUCCESS", "System", "TubeAgent system started successfully.")
+    enable_cat_poller = os.getenv("ENABLE_CAT_POLLER_IN_WEB", "true").lower() in ("true", "1", "yes")
+    if enable_cat_poller:
+        cat_agent_instance.start()
+        log_event("SUCCESS", "System", "TubeAgent and CatAgent systems started successfully.")
+    else:
+        log_event("SUCCESS", "System", "TubeAgent web server started. (CatAgent background polling handled by dedicated service).")
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
     watcher_instance.stop()
+    if cat_agent_instance._running:
+        cat_agent_instance.stop()
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -284,21 +298,62 @@ async def start_oauth_flow():
             detail="Missing client_secrets.json. Please upload your Google OAuth credentials first."
         )
 
-    def oauth_worker():
-        try:
-            channel = youtube_uploader.run_oauth_flow(port=8088)
-            agent_instance.events.emit("auth_success", channel)
-        except Exception as e:
-            log_event("ERROR", "YouTube", f"OAuth flow failed: {e}")
-            agent_instance.events.emit("auth_error", {"error": str(e)})
+    from oauth_manager import start_oauth_flow as start_unified_oauth
 
-    thread = threading.Thread(target=oauth_worker, daemon=True)
-    thread.start()
+    def on_yt_success(creds, info):
+        channel = youtube_uploader.get_channel_info()
+        agent_instance.events.emit("auth_success", channel)
 
-    return {
-        "status": "started",
-        "message": "OAuth browser window opening. Complete sign-in with your YouTube account."
-    }
+    def on_yt_error(err):
+        agent_instance.events.emit("auth_error", {"error": str(err)})
+
+    try:
+        res = start_unified_oauth(
+            service_name="YouTube",
+            scopes=youtube_uploader.SCOPES,
+            token_file=Config.TOKEN_FILE,
+            on_success=on_yt_success,
+            on_error=on_yt_error
+        )
+        return {
+            "status": "ready",
+            "auth_url": res["auth_url"],
+            "port": res["port"],
+            "message": "YouTube OAuth authorization initiated."
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/auth/redirect")
+async def youtube_auth_redirect():
+    """Direct browser navigation link for YouTube OAuth that redirects directly to Google sign-in."""
+    if not Config.CLIENT_SECRETS_FILE.exists():
+        raise HTTPException(
+            status_code=400,
+            detail="Missing client_secrets.json. Please upload your Google OAuth credentials first."
+        )
+
+    from oauth_manager import start_oauth_flow as start_unified_oauth
+
+    def on_yt_success(creds, info):
+        channel = youtube_uploader.get_channel_info()
+        agent_instance.events.emit("auth_success", channel)
+
+    def on_yt_error(err):
+        agent_instance.events.emit("auth_error", {"error": str(err)})
+
+    try:
+        res = start_unified_oauth(
+            service_name="YouTube",
+            scopes=youtube_uploader.SCOPES,
+            token_file=Config.TOKEN_FILE,
+            on_success=on_yt_success,
+            on_error=on_yt_error
+        )
+        return RedirectResponse(url=res["auth_url"], status_code=303)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/api/auth/client-secrets")
@@ -332,6 +387,10 @@ class SettingsUpdate(BaseModel):
     gemini_api_key: Optional[str] = None
     gemini_model: Optional[str] = None
     auto_upload: Optional[bool] = None
+    cat_videos_folder: Optional[str] = None
+    gmail_subject_prefix: Optional[str] = None
+    gmail_poll_interval: Optional[int] = None
+    veo_model: Optional[str] = None
 
 
 @app.get("/api/settings")
@@ -345,6 +404,11 @@ async def get_settings():
         "auto_upload": Config.AUTO_UPLOAD,
         "has_client_secrets": Config.CLIENT_SECRETS_FILE.exists(),
         "has_token": Config.TOKEN_FILE.exists(),
+        "cat_videos_folder": str(Config.CAT_VIDEOS_FOLDER),
+        "gmail_subject_prefix": Config.GMAIL_SUBJECT_PREFIX,
+        "gmail_poll_interval": Config.GMAIL_POLL_INTERVAL_SECONDS,
+        "veo_model": Config.VEO_MODEL,
+        "has_gmail_token": Config.GMAIL_TOKEN_FILE.exists(),
     }
 
 
@@ -362,16 +426,171 @@ async def update_settings(settings: SettingsUpdate):
         Config.update_setting("GEMINI_MODEL", settings.gemini_model)
     if settings.auto_upload is not None:
         Config.update_setting("AUTO_UPLOAD", str(settings.auto_upload).lower())
+    if settings.cat_videos_folder is not None:
+        Config.update_setting("CAT_VIDEOS_FOLDER", settings.cat_videos_folder)
+    if settings.gmail_subject_prefix is not None:
+        Config.update_setting("GMAIL_SUBJECT_PREFIX", settings.gmail_subject_prefix)
+    if settings.gmail_poll_interval is not None:
+        Config.update_setting("GMAIL_POLL_INTERVAL_SECONDS", str(settings.gmail_poll_interval))
+    if settings.veo_model is not None:
+        Config.update_setting("VEO_MODEL", settings.veo_model)
 
     Config.ensure_directories()
     return {"status": "success", "message": "Settings updated"}
+
+
+# ==========================================
+# Cat Explainer Agent API Endpoints
+# ==========================================
+
+class CatProcessUrlRequest(BaseModel):
+    url: str
+    title: Optional[str] = None
+
+
+@app.get("/api/cat/status")
+async def get_cat_status():
+    is_auth, email_addr = is_gmail_authenticated()
+    jobs = get_all_cat_jobs()
+    completed = len([j for j in jobs if j.get("status") == "completed"])
+    active = len([j for j in jobs if j.get("status") in ["detected", "downloading", "transcribing", "generating_video"]])
+    failed = len([j for j in jobs if j.get("status") == "failed"])
+
+    return {
+        "gmail_authenticated": is_auth,
+        "gmail_email": email_addr,
+        "subject_prefix": Config.GMAIL_SUBJECT_PREFIX,
+        "poll_interval": Config.GMAIL_POLL_INTERVAL_SECONDS,
+        "veo_model": Config.VEO_MODEL,
+        "cat_videos_folder": str(Config.CAT_VIDEOS_FOLDER),
+        "agent_running": cat_agent_instance._running,
+        "stats": {
+            "total": len(jobs),
+            "completed": completed,
+            "active": active,
+            "failed": failed
+        }
+    }
+
+
+@app.get("/api/cat/jobs")
+async def get_cat_jobs_endpoint():
+    return get_all_cat_jobs(limit=100)
+
+
+@app.post("/api/cat/check-now")
+async def cat_check_now():
+    """Manually checks Gmail inbox immediately."""
+    new_jobs = cat_agent_instance.check_now()
+    return {"status": "success", "jobs_found": len(new_jobs)}
+
+
+@app.post("/api/cat/process-url")
+async def cat_process_url(req: CatProcessUrlRequest):
+    """Processes a video link directly from the UI without an email."""
+    if not req.url:
+        raise HTTPException(status_code=400, detail="Video URL is required")
+    job_id = cat_agent_instance.process_url(url=req.url, title=req.title)
+    return {"status": "success", "job_id": job_id}
+
+
+@app.post("/api/cat/auth")
+async def cat_auth_trigger():
+    """Launches Gmail OAuth browser flow and returns the authorization URL."""
+    if not Config.CLIENT_SECRETS_FILE.exists():
+        raise HTTPException(
+            status_code=400,
+            detail="Missing client_secrets.json. Please upload your Google OAuth credentials first."
+        )
+
+    from oauth_manager import start_oauth_flow as start_unified_oauth
+
+    def on_gmail_success(creds, info):
+        agent_instance.events.emit("cat_auth_success", info)
+
+    def on_gmail_error(err):
+        agent_instance.events.emit("cat_auth_error", {"error": str(err)})
+
+    try:
+        res = start_unified_oauth(
+            service_name="Gmail",
+            scopes=gmail_monitor.GMAIL_SCOPES,
+            token_file=Config.GMAIL_TOKEN_FILE,
+            on_success=on_gmail_success,
+            on_error=on_gmail_error
+        )
+        return {
+            "status": "ready",
+            "auth_url": res["auth_url"],
+            "port": res["port"],
+            "message": "Gmail OAuth authorization initiated."
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/cat/auth/redirect")
+async def cat_auth_redirect():
+    """Direct browser navigation link for Gmail OAuth that redirects directly to Google sign-in."""
+    if not Config.CLIENT_SECRETS_FILE.exists():
+        raise HTTPException(
+            status_code=400,
+            detail="Missing client_secrets.json. Please upload your Google OAuth credentials first."
+        )
+
+    from oauth_manager import start_oauth_flow as start_unified_oauth
+
+    def on_gmail_success(creds, info):
+        agent_instance.events.emit("cat_auth_success", info)
+
+    def on_gmail_error(err):
+        agent_instance.events.emit("cat_auth_error", {"error": str(err)})
+
+    try:
+        res = start_unified_oauth(
+            service_name="Gmail",
+            scopes=gmail_monitor.GMAIL_SCOPES,
+            token_file=Config.GMAIL_TOKEN_FILE,
+            on_success=on_gmail_success,
+            on_error=on_gmail_error
+        )
+        return RedirectResponse(url=res["auth_url"], status_code=303)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/cat/video/{job_id}")
+async def serve_cat_video(job_id: int):
+    """Streams the generated cat video MP4 file."""
+    job = get_cat_job_by_id(job_id)
+    if not job or not job.get("generated_video_path"):
+        raise HTTPException(status_code=404, detail="Video file not found")
+    p = Path(job["generated_video_path"])
+    if not p.exists():
+        raise HTTPException(status_code=404, detail="Video file does not exist on disk")
+    return FileResponse(p, media_type="video/mp4", filename=p.name)
+
+
+@app.delete("/api/cat/jobs/{job_id}")
+async def remove_cat_job(job_id: int):
+    """Deletes a cat job and its generated video file."""
+    job = get_cat_job_by_id(job_id)
+    if job:
+        if job.get("generated_video_path"):
+            try:
+                p = Path(job["generated_video_path"])
+                if p.exists():
+                    p.unlink()
+            except Exception:
+                pass
+        delete_cat_job(job_id)
+    return {"status": "success", "message": f"Cat job #{job_id} deleted"}
 
 
 @app.post("/api/upload")
 async def upload_direct_video(file: UploadFile = File(...)):
     """Allows dragging and dropping a video directly onto the web interface."""
     Config.ensure_directories()
-    # Sanitize filename to prevent path traversal
     safe_filename = Path(file.filename).name
     if not safe_filename or safe_filename.startswith("."):
         raise HTTPException(status_code=400, detail="Invalid filename")
@@ -397,7 +616,6 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_text()
-            # Respond to ping
             if data == "ping":
                 await websocket.send_text("pong")
     except WebSocketDisconnect:
